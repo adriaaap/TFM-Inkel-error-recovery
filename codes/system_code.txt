@@ -1,0 +1,18 @@
+li r26, 2                   1fa00002
+li r27, 3                   1fb00003
+mov r31, r28                29cf8000
+mov r30, r29                29df0000
+beq r29, r26, dtlb          600ee803
+beq r29, r27, itlb          600eec04
+
+fin:
+jump fin                    62000000
+
+dtlb:
+tlbwrite r28, 1             680e0001
+iret                        6a000000
+
+itlb:
+tlbwrite r28, 0             680e0000
+iret                        6a000000
+
