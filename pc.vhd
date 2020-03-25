@@ -11,7 +11,10 @@ ENTITY pc IS
         exception : IN STD_LOGIC;
         iret : IN STD_LOGIC;
         load_PC : IN STD_LOGIC;
-        pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+        pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+	-- Error control
+	error_detected : IN STD_LOGIC;
+	recovery_pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0)
     );
 END pc;
 
@@ -29,6 +32,10 @@ BEGIN
             IF reset = '1' THEN
                 pc_int <= addr_boot;
                 pc_exc <= addr_boot;
+
+	    ELSIF error_detected = '1' THEN
+		pc_int <= recovery_pc;
+
             ELSE
                 pc_int <= pc_next;
 

@@ -87,7 +87,9 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			exception : IN STD_LOGIC;
 			iret : IN STD_LOGIC;
 			load_PC : IN STD_LOGIC;
-			pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+			pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+			error_detected : IN STD_LOGIC;
+			recovery_pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0)
 		);
 	END COMPONENT;
 
@@ -498,7 +500,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			reg_src2_D_data_BP : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 			sb_store_id : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
 			sb_store_commit : OUT STD_LOGIC;
-			sb_squash : OUT STD_LOGIC
+			sb_squash : OUT STD_LOGIC;
+			error_detected : OUT STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -605,6 +608,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL sb_squash_C : STD_LOGIC;
 
 	-- Mul stage signals
+	SIGNAL Mul_pipeline_reset : STD_LOGIC;
 	SIGNAL mul_M1 : STD_LOGIC;
 	SIGNAL mul_M2 : STD_LOGIC;
 	SIGNAL reg_dest_M2 : STD_LOGIC_VECTOR(4 downto 0);
@@ -669,6 +673,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL reg_src2_D_p_ROB : STD_LOGIC;
 	SIGNAL reg_src2_D_inst_type_ROB : STD_LOGIC_VECTOR(1 DOWNTO 0);
 	SIGNAL reg_src2_D_data_ROB : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL error_detected_ROB : STD_LOGIC;
 
 	-- Segmentation registers signals
 	SIGNAL reg_F_D_reset : STD_LOGIC;
@@ -683,6 +688,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL reg_F_D_we : STD_LOGIC;
 	SIGNAL reg_D_A_we : STD_LOGIC;
 	SIGNAL reg_A_C_we : STD_LOGIC;
+
+	-- Stage
 
 	-- Stall unit signals
 	SIGNAL load_PC : STD_LOGIC;
@@ -842,7 +849,9 @@ BEGIN
 		exception => exc_ROB,
 		iret => iret_A,
 		load_PC => load_PC,
-		pc => pc_F
+		pc => pc_F,
+		error_detected => error_detected_ROB,
+		recovery_pc => pc_ROB
 	);
 
 	priv_status : reg_priv_status PORT MAP(
@@ -869,7 +878,7 @@ BEGIN
 		mem_data_in => mem_data_in_F
 	);
 
-	reg_F_D_reset <= reg_F_D_reset_DU OR exc_F_E;
+	reg_F_D_reset <= reg_F_D_reset_DU OR exc_F_E OR error_detected_ROB;
 
 	reg_F_D: reg_FD PORT MAP(
 		clk => clk,
@@ -987,7 +996,7 @@ BEGIN
 		Dout => mem_data_D_BP
 	);
 
-	reg_D_A_reset <= reg_D_A_reset_DU OR exc_D_E;
+	reg_D_A_reset <= reg_D_A_reset_DU OR exc_D_E OR error_detected_ROB;
 
 	reg_D_A: reg_DA PORT MAP(
 		clk => clk,
@@ -1096,7 +1105,7 @@ BEGIN
 		Dout => mem_data_A_BP
 	);
 
-	reg_A_C_reset <= reg_A_C_reset_DU OR exc_A_E;
+	reg_A_C_reset <= reg_A_C_reset_DU OR exc_A_E OR error_detected_ROB;
 
 	reg_A_C : reg_AC PORT MAP(
 		clk => clk,
@@ -1144,7 +1153,7 @@ BEGIN
 	-------------------------------- ALU Pipeline -----------------------------------------
 
 	-- We might get an exception from F. Therefor, we still don't know the type of instruction
-	reg_W_ALU_reset <= reset OR NOT (to_std_logic(inst_type_A = INST_TYPE_ALU) OR (to_std_logic(inst_type_A = INST_TYPE_NOP) AND exc_A));
+	reg_W_ALU_reset <= reset OR NOT (to_std_logic(inst_type_A = INST_TYPE_ALU) OR (to_std_logic(inst_type_A = INST_TYPE_NOP) AND exc_A)) OR error_detected_ROB;
 
 	reg_W_ALU : reg_W PORT MAP (
 		clk => clk,
@@ -1188,9 +1197,11 @@ BEGIN
 
 	mul_M1 <= to_std_logic(inst_type_A = INST_TYPE_MUL);
 
+	Mul_pipeline_reset <= reset OR error_detected_ROB;
+
 	Mul_pipeline: ALU_MUL_seg PORT MAP(
 		clk => clk,
-		reset => reset,
+		reset => Mul_pipeline_reset,
 		load => mul_M1,
 		done_C => done_C,
 		DA => reg_data1_A,
@@ -1227,7 +1238,7 @@ BEGIN
 		inst_type_out => inst_type_M5
 	);
 
-	reg_W_MUL_reset <= reset OR to_std_logic(inst_type_M5 /= INST_TYPE_MUL) OR NOT mul_M5;
+	reg_W_MUL_reset <= reset OR to_std_logic(inst_type_M5 /= INST_TYPE_MUL) OR NOT mul_M5 OR error_detected_ROB;
 
 	reg_W_MUL : reg_W PORT MAP (
 		clk => clk,
@@ -1293,7 +1304,7 @@ BEGIN
 		sb_squash => sb_squash_C
 	);
 
-	reg_W_MEM_reset <= reset OR to_std_logic(inst_type_C /= INST_TYPE_MEM) OR NOT done_C;
+	reg_W_MEM_reset <= reset OR to_std_logic(inst_type_C /= INST_TYPE_MEM) OR NOT done_C OR error_detected_ROB;
 
 	reg_W_MEM : reg_W PORT MAP (
 		clk => clk,
@@ -1398,7 +1409,9 @@ BEGIN
 		-- Store buffer
 		sb_store_id => sb_store_id_C,
 		sb_store_commit => sb_store_commit_C,
-		sb_squash => sb_squash_C
+		sb_squash => sb_squash_C,
+		-- Error control
+		error_detected => error_detected_ROB
 	);
 
 	debug_dump_ROB <= '0';
