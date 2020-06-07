@@ -67,7 +67,7 @@ ENTITY reorder_buffer IS
 		sb_store_commit : OUT STD_LOGIC;
 		sb_squash : OUT STD_LOGIC;
 		-- Error detection
-		error_detected : OUT STD_LOGIC
+		error_detected : IN STD_LOGIC
 	);
 END reorder_buffer;
 
@@ -221,15 +221,15 @@ BEGIN
 
 				-- If an error is detected on the last instruction of the buffer, rollback the execution
 				--error := (first_error = '1') AND (reg_data_fields(head) = 16);
-				error := (first_error = '1') AND (pc_fields(head) = x"101C");
-				IF error THEN
-					error_detected <= '1';
-					first_error <= '0'; -- TEMPORAL
+				--error := (first_error = '1') AND (pc_fields(head) = x"101C");
+				IF error_detected = '1' THEN
+					--error_detected <= '1';
+					--first_error <= '0'; -- TEMPORAL
 					pc_out <= pc_fields(head);
 					reset_rob(valid_fields, head, tail);
 				-- If there is no error, proceed as usual
 				ELSE
-					error_detected <= '0';
+					--error_detected <= '0';
 
 					-- Commit instructions on rising edge
 					IF valid_fields(head) = '1' THEN
