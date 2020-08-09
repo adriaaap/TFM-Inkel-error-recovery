@@ -25,7 +25,8 @@ ENTITY cache_stage IS
 		mem_data_out    : OUT STD_LOGIC_VECTOR(127 DOWNTO 0);
 		sb_store_id     : IN  STD_LOGIC_VECTOR(3 DOWNTO 0);
 		sb_store_commit : IN  STD_LOGIC;
-		sb_squash       : IN  STD_LOGIC
+		sb_squash       : IN  STD_LOGIC;
+		sb_error_detected : IN  STD_LOGIC
 	);
 END cache_stage;
 
@@ -81,7 +82,8 @@ ARCHITECTURE cache_stage_behavior OF cache_stage IS
 			cache_data     : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 			store_id       : IN  STD_LOGIC_VECTOR(3 DOWNTO 0);
 			store_commit   : IN  STD_LOGIC;
-			squash         : IN  STD_LOGIC
+			squash         : IN  STD_LOGIC;
+			error_detected : IN  STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -152,7 +154,8 @@ BEGIN
 		cache_data => sb_cache_data,
 		store_id => sb_store_id,
 		store_commit => sb_store_commit,
-		squash => sb_squash
+		squash => sb_squash,
+		error_detected => sb_error_detected
 	);
 
 	done <= cache_done AND sb_done;

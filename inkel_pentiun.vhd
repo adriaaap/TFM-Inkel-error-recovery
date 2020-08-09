@@ -142,7 +142,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			mem_data_out    : OUT STD_LOGIC_VECTOR(127 DOWNTO 0);
 			sb_store_id     : IN  STD_LOGIC_VECTOR(3 DOWNTO 0);
 			sb_store_commit : IN  STD_LOGIC;
-			sb_squash       : IN  STD_LOGIC
+			sb_squash       : IN  STD_LOGIC;
+			sb_error_detected : IN  STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -507,21 +508,95 @@ ARCHITECTURE structure OF inkel_pentiun IS
 
 	COMPONENT output_comparator IS
 		PORT(
-			reg_v_1    	: IN STD_LOGIC;
-			reg_1      	: IN STD_LOGIC_VECTOR(4 DOWNTO 0);
-			reg_data_1 	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-			exc_1      	: IN STD_LOGIC;
-			exc_code_1 	: IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-			exc_data_1 	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-			pc_1       	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-			reg_v_2    	: IN STD_LOGIC;
-			reg_2      	: IN STD_LOGIC_VECTOR(4 DOWNTO 0);
-			reg_data_2 	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-			exc_2      	: IN STD_LOGIC;
-			exc_code_2 	: IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-			exc_data_2 	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-			pc_2       	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-			error_detected  : OUT STD_LOGIC
+			-- Main rob input
+			reg_v_1 : IN STD_LOGIC;
+			reg_1 : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+			reg_data_1 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			exc_1 : IN STD_LOGIC;
+			exc_code_1 : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+			exc_data_1 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			pc_1 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			-- Dup rob input
+			reg_v_2 : IN STD_LOGIC;
+			reg_2 : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+			reg_data_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			exc_2 : IN STD_LOGIC;
+			exc_code_2 : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+			exc_data_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			pc_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			-- ALU 1 input
+			jump_addr_A_1 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			-- ALU 2 input
+			jump_addr_A_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			-- Cache 1 input
+			mem_req_C_1 : IN STD_LOGIC;
+			mem_we_C_1 : IN STD_LOGIC;
+			mem_addr_C_1 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			mem_data_out_C_1 : IN STD_LOGIC_VECTOR(127 DOWNTO 0);
+			-- Cache 2 input
+			mem_req_C_2 : IN STD_LOGIC;
+			mem_we_C_2 : IN STD_LOGIC;
+			mem_addr_C_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			mem_data_out_C_2 : IN STD_LOGIC_VECTOR(127 DOWNTO 0);
+			-- Segmentation regs 1 input
+			reg_F_D_reset_DU_1 : IN STD_LOGIC;
+			reg_D_A_reset_DU_1 : IN STD_LOGIC;
+			reg_F_D_we_1 : IN STD_LOGIC;
+			reg_D_A_we_1 : IN STD_LOGIC;
+			-- Segmentation regs 2 input
+			reg_F_D_reset_DU_2 : IN STD_LOGIC;
+			reg_D_A_reset_DU_2 : IN STD_LOGIC;
+			reg_F_D_we_2 : IN STD_LOGIC;
+			reg_D_A_we_2 : IN STD_LOGIC;
+			-- Stall unit 1 input
+			load_PC_1 : IN STD_LOGIC;
+			reset_PC_1 : IN STD_LOGIC;
+			-- Stall unit 2 input
+			load_PC_2	: IN STD_LOGIC;
+			reset_PC_2 : IN STD_LOGIC;
+			-- Exception unit 1 input
+			exc_F_E_1 : IN STD_LOGIC;
+			exc_D_E_1 : IN STD_LOGIC;
+			exc_code_F_E_1 : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+			exc_code_D_E_1 : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+			exc_data_F_E_1 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			exc_data_D_E_1 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			-- Exception unit 2 input
+			exc_F_E_2 : IN STD_LOGIC;
+			exc_D_E_2 : IN STD_LOGIC;
+			exc_code_F_E_2 : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+			exc_code_D_E_2 : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+			exc_data_F_E_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			exc_data_D_E_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			-- Output
+			error_detected : OUT STD_LOGIC
+		);
+	END COMPONENT;
+
+	COMPONENT error_generator IS 
+		PORT (clk : IN STD_LOGIC;
+		reset : IN STD_LOGIC;
+		
+		D_inst_type_err : OUT STD_LOGIC;
+		D_op_code_err : OUT STD_LOGIC;
+		D_reg_src1_err : OUT STD_LOGIC;
+		D_reg_src2_err : OUT STD_LOGIC;
+		D_reg_dest_err : OUT STD_LOGIC;
+		D_inm_ext_err : OUT STD_LOGIC;
+		D_ALU_ctrl_err : OUT STD_LOGIC;
+		D_branch_err : OUT STD_LOGIC;
+		D_branch_if_eq_err : OUT STD_LOGIC;
+		D_jump_err : OUT STD_LOGIC;
+		D_reg_src1_v_err : OUT STD_LOGIC;
+		D_reg_src2_v_err : OUT STD_LOGIC;
+		D_inm_src2_v_err : OUT STD_LOGIC;
+		D_mem_write_err : OUT STD_LOGIC;
+		D_byte_err : OUT STD_LOGIC;
+		D_mem_read_err : OUT STD_LOGIC;
+		D_reg_we_err : OUT STD_LOGIC;
+		D_iret_err : OUT STD_LOGIC;
+		D_invalid_inst_err : OUT STD_LOGIC
+
 		);
 	END COMPONENT;
 
@@ -779,7 +854,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL byte_A_dup : STD_LOGIC;
 	SIGNAL reg_we_A_dup : STD_LOGIC;
 	SIGNAL priv_status_A_dup : STD_LOGIC;
-	SIGNAL iret_A_ghost : STD_LOGIC;
+	SIGNAL iret_A_dup : STD_LOGIC;
 	SIGNAL inst_type_A_dup : STD_LOGIC_VECTOR(1 DOWNTO 0);
 	SIGNAL ALU_ctrl_A_dup : STD_LOGIC_VECTOR(2 DOWNTO 0);
 	SIGNAL rob_idx_A_dup : STD_LOGIC_VECTOR(3 DOWNTO 0);
@@ -946,7 +1021,27 @@ ARCHITECTURE structure OF inkel_pentiun IS
 
     -- END 2nd pipeline signals
 
-    -- REVISE UNITS, SWAP CABLES --
+    -- Signals from error generator --
+    -- Decode --
+	SIGNAL D_inst_type_err : STD_LOGIC;
+	SIGNAL D_op_code_err : STD_LOGIC;
+	SIGNAL D_reg_src1_err : STD_LOGIC;
+	SIGNAL D_reg_src2_err : STD_LOGIC;
+	SIGNAL D_reg_dest_err : STD_LOGIC;
+	SIGNAL D_inm_ext_err : STD_LOGIC;
+	SIGNAL D_ALU_ctrl_err : STD_LOGIC;
+	SIGNAL D_branch_err : STD_LOGIC;
+	SIGNAL D_branch_if_eq_err : STD_LOGIC;
+	SIGNAL D_jump_err : STD_LOGIC;
+	SIGNAL D_reg_src1_v_err : STD_LOGIC;
+	SIGNAL D_reg_src2_v_err : STD_LOGIC;
+	SIGNAL D_inm_src2_v_err : STD_LOGIC;
+	SIGNAL D_mem_write_err : STD_LOGIC;
+	SIGNAL D_byte_err : STD_LOGIC;
+	SIGNAL D_mem_read_err : STD_LOGIC;
+	SIGNAL D_reg_we_err : STD_LOGIC;
+	SIGNAL D_iret_err : STD_LOGIC;
+	SIGNAL D_invalid_inst_err : STD_LOGIC;
 
 BEGIN
 
@@ -1517,7 +1612,8 @@ BEGIN
 		mem_data_out => mem_data_out_C,
 		sb_store_id => sb_store_id_C,
 		sb_store_commit => sb_store_commit_C,
-		sb_squash => sb_squash_C
+		sb_squash => sb_squash_C,
+		sb_error_detected => error_detected
 	);
 
 	reg_W_MEM_reset <= reset OR to_std_logic(inst_type_C /= INST_TYPE_MEM) OR NOT done_C OR error_detected;
@@ -1733,16 +1829,16 @@ BEGIN
 
 	--------------------------------- Execution ------------------------------------------
 
-    branch_A_dup <= branch_A;
-    jump_A_dup <= jump_A;
-    reg_data1_A_dup <= reg_data1_A;
-    pc_A_dup <= pc_A;
-    reg_data2_A_dup <= reg_data2_A;
-    inm_ext_A_dup <= inm_ext_A;
-    inm_src2_v_A_dup <= inm_src2_v_A;
-    branch_if_eq_A_dup <= branch_if_eq_A;
-    ALU_ctrl_A_dup <= ALU_ctrl_A;
-    mem_data_A_dup <= mem_data_A;
+    	branch_A_dup <= branch_A;
+    	jump_A_dup <= jump_A;
+    	reg_data1_A_dup <= reg_data1_A;
+    	pc_A_dup <= pc_A;
+    	reg_data2_A_dup <= reg_data2_A;
+    	inm_ext_A_dup <= inm_ext_A;
+    	inm_src2_v_A_dup <= inm_src2_v_A;
+    	branch_if_eq_A_dup <= branch_if_eq_A;
+    	ALU_ctrl_A_dup <= ALU_ctrl_A;
+    	mem_data_A_dup <= mem_data_A;
 	mem_we_A_dup <= mem_we_A;
 	byte_A_dup <= byte_A;
 	mem_read_A_dup <= mem_read_A;
@@ -1751,6 +1847,7 @@ BEGIN
 	priv_status_A_dup <= priv_status_A_dup;
 	rob_idx_A_dup <= rob_idx_A;
 	inst_type_A_dup <= inst_type_A;
+	iret_A_dup <= iret_A;
 
 
 	jump_or_branch_A_dup <= branch_A_dup OR jump_A_dup;
@@ -1774,7 +1871,7 @@ BEGIN
 
 	-- Z = '1' when operands equal
 	Z_dup <= to_std_logic(reg_data1_A_dup = reg_data2_A_dup);
-	branch_taken_A_dup <= (to_std_logic(Z_dup = branch_if_eq_A_dup) AND branch_A_dup) OR jump_A_dup OR iret_A_ghost;
+	branch_taken_A_dup <= (to_std_logic(Z_dup = branch_if_eq_A_dup) AND branch_A_dup) OR jump_A_dup OR iret_A_dup;
 
 
 	ALU_MIPs_dup: ALU PORT MAP(
@@ -1996,7 +2093,8 @@ BEGIN
 		mem_data_out => mem_data_out_C_ghost,
 		sb_store_id => sb_store_id_C_dup,
 		sb_store_commit => sb_store_commit_C_dup,
-		sb_squash => sb_squash_C_dup
+		sb_squash => sb_squash_C_dup,
+		sb_error_detected => error_detected
 	);
 
 	reg_W_MEM_reset_dup <= reset OR to_std_logic(inst_type_C_dup /= INST_TYPE_MEM) OR NOT done_C_dup OR error_detected;
@@ -2112,6 +2210,7 @@ BEGIN
     -- END 2nd pipeline --
 
 	comparator : output_comparator PORT MAP(
+		-- Rob 1 input
 		reg_v_1 => reg_we_ROB,
 		reg_1 => reg_dest_ROB,
 		reg_data_1 => reg_data_ROB,
@@ -2119,6 +2218,7 @@ BEGIN
 		exc_code_1 => exc_code_ROB,
 		exc_data_1 => exc_data_ROB,
 		pc_1 => pc_ROB,
+		-- Rob 2 input
 		reg_v_2 => reg_we_ROB_ghost,
 		reg_2 => reg_dest_ROB_ghost,
 		reg_data_2 => reg_data_ROB_ghost,
@@ -2126,9 +2226,78 @@ BEGIN
 		exc_code_2 => exc_code_ROB_ghost,
 		exc_data_2 => exc_data_ROB_ghost,
 		pc_2 => pc_ROB_ghost,
+		-- ALU 1 input
+		jump_addr_A_1 => jump_addr_A,
+		-- ALU 2 input
+		jump_addr_A_2 => jump_addr_A_ghost,
+		-- Cache 1 input
+		mem_req_C_1 => mem_req_C,
+		mem_we_C_1 => mem_we_C,
+		mem_addr_C_1 => mem_addr_C,
+		mem_data_out_C_1 => mem_data_out_C,
+		-- Cache 2 input
+		mem_req_C_2 => mem_req_C_ghost,
+		mem_we_C_2 => mem_we_C_ghost,
+		mem_addr_C_2 => mem_addr_C_ghost,
+		mem_data_out_C_2 => mem_data_out_C_ghost,
+		-- Segmentation regs 1 input
+		reg_F_D_reset_DU_1 => reg_F_D_reset_DU,
+		reg_D_A_reset_DU_1 => reg_D_A_reset_DU,
+		reg_F_D_we_1 => reg_F_D_we,
+		reg_D_A_we_1 => reg_D_A_we,
+		-- Segmentation regs 2 input
+		reg_F_D_reset_DU_2 => reg_F_D_reset_DU_ghost,
+		reg_D_A_reset_DU_2 => reg_D_A_reset_DU_ghost,
+		reg_F_D_we_2 => reg_F_D_we_ghost,
+		reg_D_A_we_2 => reg_D_A_we_ghost,
+		-- Stall unit 1 input
+		load_PC_1 => load_PC,
+		reset_PC_1 => reset_PC,
+		-- Stall unit 2 input
+		load_PC_2 => load_PC_ghost,
+		reset_PC_2 => reset_PC_ghost,
+		-- Exception unit 1 input
+		exc_F_E_1 => exc_F_E,
+		exc_D_E_1 => exc_D_E,
+		exc_code_F_E_1 => exc_code_F_E,
+		exc_code_D_E_1 => exc_code_D_E,
+		exc_data_F_E_1 => exc_data_F_E,
+		exc_data_D_E_1 => exc_data_D_E,
+		-- Exception unit 2 input
+		exc_F_E_2 => exc_F_E_ghost,
+		exc_D_E_2 => exc_D_E_ghost,
+		exc_code_F_E_2 => exc_code_F_E_ghost,
+		exc_code_D_E_2 => exc_code_D_E_ghost,
+		exc_data_F_E_2 => exc_data_F_E_ghost,
+		exc_data_D_E_2 => exc_data_D_E_ghost,
+		-- Output
 		error_detected => error_detected
 	);
 
+	error_gen : error_generator PORT MAP(
+		clk => clk,
+		reset => reset,
+		-- Decode --
+		D_inst_type_err => D_inst_type_err,
+		D_op_code_err => D_op_code_err,
+		D_reg_src1_err => D_reg_src1_err,
+		D_reg_src2_err => D_reg_src2_err,
+		D_reg_dest_err => D_reg_dest_err,
+		D_inm_ext_err => D_inm_ext_err,
+		D_ALU_ctrl_err => D_ALU_ctrl_err,
+		D_branch_err => D_branch_err,
+		D_branch_if_eq_err => D_branch_if_eq_err,
+		D_jump_err => D_jump_err,
+		D_reg_src1_v_err => D_reg_src1_v_err,
+		D_reg_src2_v_err => D_reg_src2_v_err,
+		D_inm_src2_v_err => D_inm_src2_v_err,
+		D_mem_write_err => D_mem_write_err,
+		D_byte_err => D_byte_err,
+		D_mem_read_err => D_mem_read_err,
+		D_reg_we_err => D_reg_we_err,
+		D_iret_err => D_iret_err,
+		D_invalid_inst_err => D_invalid_inst_err
+	); 
 
 END structure;
 

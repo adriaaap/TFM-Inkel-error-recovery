@@ -26,7 +26,8 @@ ENTITY store_buffer IS
 		cache_data     : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 		store_id       : IN  STD_LOGIC_VECTOR(3 DOWNTO 0);
 		store_commit   : IN  STD_LOGIC;
-		squash         : IN  STD_LOGIC
+		squash         : IN  STD_LOGIC;
+		error_detected : IN  STD_LOGIC
 	);
 END store_buffer;
 
@@ -135,7 +136,7 @@ execution_process : PROCESS(clk, reset)
 	VARIABLE new_entry : INTEGER RANGE 0 TO SB_ENTRIES - 1;
 BEGIN
 	IF falling_edge(clk) THEN
-		IF reset = '1' OR squash = '1' THEN
+		IF reset = '1' OR squash = '1' OR error_detected = '1' THEN
 			reset_entries(valid_fields, addr_fields, byte_fields, size_nx_i, head_nx_i);
 		ELSE
 			head := head_i;
