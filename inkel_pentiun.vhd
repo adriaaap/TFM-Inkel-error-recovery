@@ -643,7 +643,26 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL mem_data_D_BP : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL data1_BP_D : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL data2_BP_D : STD_LOGIC_VECTOR(31 DOWNTO 0);
-
+	-- Original signals before potential errors are introduced --
+	SIGNAL inst_type_D_original : STD_LOGIC_VECTOR(1 DOWNTO 0);
+	SIGNAL op_code_D_original : STD_LOGIC_VECTOR(6 DOWNTO 0);
+	SIGNAL reg_src1_D_original : STD_LOGIC_VECTOR(4 DOWNTO 0);
+	SIGNAL reg_src2_D_original : STD_LOGIC_VECTOR(4 DOWNTO 0);
+	SIGNAL reg_dest_D_original : STD_LOGIC_VECTOR(4 DOWNTO 0);
+	SIGNAL inm_ext_D_original : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL ALU_ctrl_D_original : STD_LOGIC_VECTOR(2 DOWNTO 0);
+	SIGNAL branch_D_original : STD_LOGIC;
+	SIGNAL jump_D_original : STD_LOGIC;
+	SIGNAL branch_if_eq_D_original : STD_LOGIC;
+	SIGNAL reg_src1_v_D_original : STD_LOGIC;
+	SIGNAL reg_src2_v_D_original : STD_LOGIC;
+	SIGNAL inm_src2_v_D_original : STD_LOGIC;
+	SIGNAL mem_we_D_original : STD_LOGIC;
+	SIGNAL mem_read_D_original : STD_LOGIC;
+	SIGNAL byte_D_original : STD_LOGIC;
+	SIGNAL reg_we_D_original : STD_LOGIC;
+	SIGNAL invalid_inst_D_original : STD_LOGIC;
+	SIGNAL iret_D_original : STD_LOGIC;
 	-- ALU stage signals
 	SIGNAL Z : STD_LOGIC;
 	SIGNAL branch_A : STD_LOGIC;
@@ -1226,31 +1245,60 @@ BEGIN
 
 	----------------------------- Decode -------------------------------
 
+
 	d: decode PORT MAP(
 		inst => inst_D,
 		inst_v => inst_v_D,
 		pc => pc_D,
 		priv_status => priv_status_D,
-		inst_type => inst_type_D,
-		op_code => op_code_D,
-		reg_src1 => reg_src1_D,
-		reg_src2 => reg_src2_D,
-		reg_dest => reg_dest_D,
-		inm_ext => inm_ext_D,
-		ALU_ctrl => ALU_ctrl_D,
-		branch => branch_D,
-		branch_if_eq => branch_if_eq_D,
-		jump => jump_D,
-		reg_src1_v => reg_src1_v_D,
-		reg_src2_v => reg_src2_v_D,
-		inm_src2_v => inm_src2_v_D,
-		mem_write => mem_we_D,
-		byte => byte_D,
-		mem_read => mem_read_D,
-		reg_we => reg_we_D,
-		iret => iret_D,
-		invalid_inst => invalid_inst_D
+		inst_type => inst_type_D_original,
+		op_code => op_code_D_original,
+		reg_src1 => reg_src1_D_original,
+		reg_src2 => reg_src2_D_original,
+		reg_dest => reg_dest_D_original,
+		inm_ext => inm_ext_D_original,
+		ALU_ctrl => ALU_ctrl_D_original,
+		branch => branch_D_original,
+		branch_if_eq => branch_if_eq_D_original,
+		jump => jump_D_original,
+		reg_src1_v => reg_src1_v_D_original,
+		reg_src2_v => reg_src2_v_D_original,
+		inm_src2_v => inm_src2_v_D_original,
+		mem_write => mem_we_D_original,
+		byte => byte_D_original,
+		mem_read => mem_read_D_original,
+		reg_we => reg_we_D_original,
+		iret => iret_D_original,
+		invalid_inst => invalid_inst_D_original
 	);
+
+	-- Tamper the original decode signals and add some errors if the generator feels like it --
+	inst_type_D(1) <= inst_type_D_original(1) xor D_inst_type_err;
+	inst_type_D(0) <= inst_type_D_original(0);
+	op_code_D(6) <= op_code_D_original(6) xor D_op_code_err;
+	op_code_D(5 DOWNTO 0) <= op_code_D_original(5 DOWNTO 0);
+	reg_src1_D(4) <= reg_src1_D_original(4) xor D_reg_src1_err;
+	reg_src1_D(3 DOWNTO 0) <= reg_src1_D_original(3 DOWNTO 0);
+	reg_src2_D(4) <= reg_src2_D_original(4) xor D_reg_src2_err;
+	reg_src2_D(3 DOWNTO 0) <= reg_src2_D_original(3 DOWNTO 0);
+	reg_dest_D(4) <= reg_dest_D_original(4) xor D_reg_dest_err;
+	reg_dest_D(3 DOWNTO 0) <= reg_dest_D_original(3 DOWNTO 0);
+	inm_ext_D(31) <= inm_ext_D_original(31) xor D_inm_ext_err;
+	inm_ext_D(30 DOWNTO 0) <= inm_ext_D_original(30 DOWNTO 0);
+	ALU_ctrl_D(2) <= ALU_ctrl_D_original(2) xor D_ALU_ctrl_err;
+	ALU_ctrl_D(1 DOWNTO 0) <= ALU_ctrl_D_original(1 DOWNTO 0);
+	branch_D <= branch_D_original xor D_branch_err;
+	jump_D <= jump_D_original xor D_jump_err;
+	branch_if_eq_D <= branch_if_eq_D_original xor D_branch_if_eq_err;
+	reg_src1_v_D <= reg_src1_v_D_original xor D_reg_src1_v_err;
+	reg_src2_v_D <= reg_src2_v_D_original xor D_reg_src2_v_err;
+	inm_src2_v_D <= inm_src2_v_D_original xor D_inm_src2_v_err;
+	mem_we_D <= mem_we_D_original xor D_mem_write_err;
+	mem_read_D <= mem_read_D_original xor D_mem_read_err;
+	byte_D <= byte_D_original xor D_byte_err;
+	reg_we_D <= reg_we_D_original xor D_reg_we_err;
+	invalid_inst_D <= invalid_inst_D_original xor D_invalid_inst_err;
+	iret_D <= iret_D_original xor D_iret_err;
 
 	rb: reg_bank PORT MAP(
 		clk => clk,

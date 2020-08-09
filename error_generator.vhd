@@ -30,11 +30,23 @@ ENTITY error_generator IS
 END error_generator;
 
 ARCHITECTURE structure OF error_generator IS
+	SIGNAL error_clock : integer range 0 to 10;
 
 BEGIN
+   	p : PROCESS(clk)
+    	BEGIN
+	    IF rising_edge(clk) THEN
+		IF reset = '1' THEN
+		    error_clock <= 0;
+		ELSIF error_clock = 10 THEN
+		    error_clock <= 0;
+		ELSE
+		    error_clock <= error_clock + 1;
+		END IF;
+	    END IF;
+	END PROCESS p;
 
-
-	D_inst_type_err <= '0';
+	D_inst_type_err <= '1' WHEN error_clock = 5 else '0';
 	D_op_code_err <= '0';
 	D_reg_src1_err <= '0';
 	D_reg_src2_err <= '0';
