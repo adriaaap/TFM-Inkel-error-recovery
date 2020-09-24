@@ -14,7 +14,8 @@ ENTITY pc IS
         pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 	-- Error control
 	error_detected : IN STD_LOGIC;
-	recovery_pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0)
+	recovery_pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+	new_recovery_pc : IN STD_LOGIC
     );
 END pc;
 
@@ -25,6 +26,7 @@ ARCHITECTURE structure OF pc IS
     SIGNAL pc_int : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL pc_next : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL pc_exc : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL latest_executed_inst : STD_LOGIC_VECTOR(31 DOWNTO 0);
 BEGIN
     p : PROCESS(clk)
     BEGIN
@@ -34,8 +36,8 @@ BEGIN
                 pc_exc <= addr_boot;
 
 	    ELSIF error_detected = '1' THEN
-		pc_int <= recovery_pc;
-
+		-- pc_int <= recovery_pc;
+		pc_int <= latest_executed_inst + 4;
             ELSE
                 pc_int <= pc_next;
 
@@ -43,6 +45,11 @@ BEGIN
                     pc_exc <= exception_addr;
                 END IF;
             END IF;
+
+	    IF new_recovery_pc = '1' THEN
+		latest_executed_inst <= recovery_pc;
+	    END IF;
+
         END IF;
     END PROCESS p;
 

@@ -89,7 +89,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			load_PC : IN STD_LOGIC;
 			pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 			error_detected : IN STD_LOGIC;
-			recovery_pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0)
+			recovery_pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			new_recovery_pc : IN STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -502,7 +503,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			sb_store_id : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
 			sb_store_commit : OUT STD_LOGIC;
 			sb_squash : OUT STD_LOGIC;
-			error_detected : IN STD_LOGIC
+			error_detected : IN STD_LOGIC;
+			new_recovery_pc : OUT STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -577,25 +579,25 @@ ARCHITECTURE structure OF inkel_pentiun IS
 		PORT (clk : IN STD_LOGIC;
 		reset : IN STD_LOGIC;
 		
-		D_inst_type_err : OUT STD_LOGIC;
-		D_op_code_err : OUT STD_LOGIC;
-		D_reg_src1_err : OUT STD_LOGIC;
-		D_reg_src2_err : OUT STD_LOGIC;
-		D_reg_dest_err : OUT STD_LOGIC;
-		D_inm_ext_err : OUT STD_LOGIC;
-		D_ALU_ctrl_err : OUT STD_LOGIC;
-		D_branch_err : OUT STD_LOGIC;
-		D_branch_if_eq_err : OUT STD_LOGIC;
-		D_jump_err : OUT STD_LOGIC;
-		D_reg_src1_v_err : OUT STD_LOGIC;
-		D_reg_src2_v_err : OUT STD_LOGIC;
-		D_inm_src2_v_err : OUT STD_LOGIC;
-		D_mem_write_err : OUT STD_LOGIC;
-		D_byte_err : OUT STD_LOGIC;
-		D_mem_read_err : OUT STD_LOGIC;
-		D_reg_we_err : OUT STD_LOGIC;
-		D_iret_err : OUT STD_LOGIC;
-		D_invalid_inst_err : OUT STD_LOGIC
+		branch_A_err : OUT STD_LOGIC;
+		jump_A_err : OUT STD_LOGIC;
+		reg_data1_A_err : OUT STD_LOGIC;
+		pc_A_err : OUT STD_LOGIC;
+		reg_data2_A_err : OUT STD_LOGIC;
+		inm_ext_A_err : OUT STD_LOGIC;
+		inm_src2_v_A_err : OUT STD_LOGIC;
+		branch_if_eq_A_err : OUT STD_LOGIC;
+		ALU_ctrl_A_err : OUT STD_LOGIC;
+		mem_data_A_err : OUT STD_LOGIC;
+		mem_we_A_err : OUT STD_LOGIC;
+		byte_A_err : OUT STD_LOGIC;
+		mem_read_A_err : OUT STD_LOGIC;
+		reg_we_A_err : OUT STD_LOGIC;
+		reg_dest_A_err : OUT STD_LOGIC;
+		priv_status_A_err : OUT STD_LOGIC;
+		rob_idx_A_err : OUT STD_LOGIC;
+		inst_type_A_err : OUT STD_LOGIC;
+		iret_A_err : OUT STD_LOGIC
 
 		);
 	END COMPONENT;
@@ -787,6 +789,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL reg_src2_D_p_ROB : STD_LOGIC;
 	SIGNAL reg_src2_D_inst_type_ROB : STD_LOGIC_VECTOR(1 DOWNTO 0);
 	SIGNAL reg_src2_D_data_ROB : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL new_recovery_pc : STD_LOGIC;
 
 	-- Segmentation registers signals
 	SIGNAL reg_F_D_reset : STD_LOGIC;
@@ -980,6 +983,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL reg_src2_D_p_ROB_dup : STD_LOGIC;
 	SIGNAL reg_src2_D_inst_type_ROB_dup : STD_LOGIC_VECTOR(1 DOWNTO 0);
 	SIGNAL reg_src2_D_data_ROB_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL new_recovery_pc_ghost : STD_LOGIC;
 
 	-- Segmentation registers signals
 	SIGNAL reg_F_D_reset_DU_ghost : STD_LOGIC;
@@ -1041,26 +1045,29 @@ ARCHITECTURE structure OF inkel_pentiun IS
     -- END 2nd pipeline signals
 
     -- Signals from error generator --
-    -- Decode --
-	SIGNAL D_inst_type_err : STD_LOGIC;
-	SIGNAL D_op_code_err : STD_LOGIC;
-	SIGNAL D_reg_src1_err : STD_LOGIC;
-	SIGNAL D_reg_src2_err : STD_LOGIC;
-	SIGNAL D_reg_dest_err : STD_LOGIC;
-	SIGNAL D_inm_ext_err : STD_LOGIC;
-	SIGNAL D_ALU_ctrl_err : STD_LOGIC;
-	SIGNAL D_branch_err : STD_LOGIC;
-	SIGNAL D_branch_if_eq_err : STD_LOGIC;
-	SIGNAL D_jump_err : STD_LOGIC;
-	SIGNAL D_reg_src1_v_err : STD_LOGIC;
-	SIGNAL D_reg_src2_v_err : STD_LOGIC;
-	SIGNAL D_inm_src2_v_err : STD_LOGIC;
-	SIGNAL D_mem_write_err : STD_LOGIC;
-	SIGNAL D_byte_err : STD_LOGIC;
-	SIGNAL D_mem_read_err : STD_LOGIC;
-	SIGNAL D_reg_we_err : STD_LOGIC;
-	SIGNAL D_iret_err : STD_LOGIC;
-	SIGNAL D_invalid_inst_err : STD_LOGIC;
+    -- ALU --
+    SIGNAL branch_A_err : STD_LOGIC;
+    SIGNAL jump_A_err : STD_LOGIC;
+    SIGNAL reg_data1_A_err : STD_LOGIC;
+    SIGNAL pc_A_err : STD_LOGIC;
+    SIGNAL reg_data2_A_err : STD_LOGIC;
+    SIGNAL inm_ext_A_err : STD_LOGIC;
+    SIGNAL inm_src2_v_A_err : STD_LOGIC;
+    SIGNAL branch_if_eq_A_err : STD_LOGIC;
+    SIGNAL ALU_ctrl_A_err : STD_LOGIC;
+    SIGNAL mem_data_A_err : STD_LOGIC;
+	SIGNAL mem_we_A_err : STD_LOGIC;
+	SIGNAL byte_A_err : STD_LOGIC;
+	SIGNAL mem_read_A_err : STD_LOGIC;
+	SIGNAL reg_we_A_err : STD_LOGIC;
+	SIGNAL reg_dest_A_err : STD_LOGIC;
+	SIGNAL priv_status_A_err : STD_LOGIC;
+    SIGNAL rob_idx_A_err : STD_LOGIC;
+	SIGNAL inst_type_A_err : STD_LOGIC;
+	SIGNAL iret_A_err : STD_LOGIC;
+
+
+
 
 BEGIN
 
@@ -1181,7 +1188,8 @@ BEGIN
 		load_PC => load_PC,
 		pc => pc_F,
 		error_detected => error_detected,
-		recovery_pc => pc_ROB
+		recovery_pc => pc_ROB,
+		new_recovery_pc => new_recovery_pc
 	);
 
 	priv_status : reg_priv_status PORT MAP(
@@ -1251,54 +1259,27 @@ BEGIN
 		inst_v => inst_v_D,
 		pc => pc_D,
 		priv_status => priv_status_D,
-		inst_type => inst_type_D_original,
-		op_code => op_code_D_original,
-		reg_src1 => reg_src1_D_original,
-		reg_src2 => reg_src2_D_original,
-		reg_dest => reg_dest_D_original,
-		inm_ext => inm_ext_D_original,
-		ALU_ctrl => ALU_ctrl_D_original,
-		branch => branch_D_original,
-		branch_if_eq => branch_if_eq_D_original,
-		jump => jump_D_original,
-		reg_src1_v => reg_src1_v_D_original,
-		reg_src2_v => reg_src2_v_D_original,
-		inm_src2_v => inm_src2_v_D_original,
-		mem_write => mem_we_D_original,
-		byte => byte_D_original,
-		mem_read => mem_read_D_original,
-		reg_we => reg_we_D_original,
-		iret => iret_D_original,
-		invalid_inst => invalid_inst_D_original
+		inst_type => inst_type_D,
+		op_code => op_code_D,
+		reg_src1 => reg_src1_D,
+		reg_src2 => reg_src2_D,
+		reg_dest => reg_dest_D,
+		inm_ext => inm_ext_D,
+		ALU_ctrl => ALU_ctrl_D,
+		branch => branch_D,
+		branch_if_eq => branch_if_eq_D,
+		jump => jump_D,
+		reg_src1_v => reg_src1_v_D,
+		reg_src2_v => reg_src2_v_D,
+		inm_src2_v => inm_src2_v_D,
+		mem_write => mem_we_D,
+		byte => byte_D,
+		mem_read => mem_read_D,
+		reg_we => reg_we_D,
+		iret => iret_D,
+		invalid_inst => invalid_inst_D
 	);
 
-	-- Tamper the original decode signals and add some errors if the generator feels like it --
-	inst_type_D(1) <= inst_type_D_original(1) xor D_inst_type_err;
-	inst_type_D(0) <= inst_type_D_original(0);
-	op_code_D(6) <= op_code_D_original(6) xor D_op_code_err;
-	op_code_D(5 DOWNTO 0) <= op_code_D_original(5 DOWNTO 0);
-	reg_src1_D(4) <= reg_src1_D_original(4) xor D_reg_src1_err;
-	reg_src1_D(3 DOWNTO 0) <= reg_src1_D_original(3 DOWNTO 0);
-	reg_src2_D(4) <= reg_src2_D_original(4) xor D_reg_src2_err;
-	reg_src2_D(3 DOWNTO 0) <= reg_src2_D_original(3 DOWNTO 0);
-	reg_dest_D(4) <= reg_dest_D_original(4) xor D_reg_dest_err;
-	reg_dest_D(3 DOWNTO 0) <= reg_dest_D_original(3 DOWNTO 0);
-	inm_ext_D(31) <= inm_ext_D_original(31) xor D_inm_ext_err;
-	inm_ext_D(30 DOWNTO 0) <= inm_ext_D_original(30 DOWNTO 0);
-	ALU_ctrl_D(2) <= ALU_ctrl_D_original(2) xor D_ALU_ctrl_err;
-	ALU_ctrl_D(1 DOWNTO 0) <= ALU_ctrl_D_original(1 DOWNTO 0);
-	branch_D <= branch_D_original xor D_branch_err;
-	jump_D <= jump_D_original xor D_jump_err;
-	branch_if_eq_D <= branch_if_eq_D_original xor D_branch_if_eq_err;
-	reg_src1_v_D <= reg_src1_v_D_original xor D_reg_src1_v_err;
-	reg_src2_v_D <= reg_src2_v_D_original xor D_reg_src2_v_err;
-	inm_src2_v_D <= inm_src2_v_D_original xor D_inm_src2_v_err;
-	mem_we_D <= mem_we_D_original xor D_mem_write_err;
-	mem_read_D <= mem_read_D_original xor D_mem_read_err;
-	byte_D <= byte_D_original xor D_byte_err;
-	reg_we_D <= reg_we_D_original xor D_reg_we_err;
-	invalid_inst_D <= invalid_inst_D_original xor D_invalid_inst_err;
-	iret_D <= iret_D_original xor D_iret_err;
 
 	rb: reg_bank PORT MAP(
 		clk => clk,
@@ -1771,7 +1752,8 @@ BEGIN
 		sb_store_commit => sb_store_commit_C,
 		sb_squash => sb_squash_C,
 		-- Error control
-		error_detected => error_detected
+		error_detected => error_detected,
+		new_recovery_pc => new_recovery_pc
 	);
 
 	debug_dump_ROB <= '0';
@@ -1877,25 +1859,36 @@ BEGIN
 
 	--------------------------------- Execution ------------------------------------------
 
-    	branch_A_dup <= branch_A;
-    	jump_A_dup <= jump_A;
-    	reg_data1_A_dup <= reg_data1_A;
-    	pc_A_dup <= pc_A;
-    	reg_data2_A_dup <= reg_data2_A;
-    	inm_ext_A_dup <= inm_ext_A;
-    	inm_src2_v_A_dup <= inm_src2_v_A;
-    	branch_if_eq_A_dup <= branch_if_eq_A;
-    	ALU_ctrl_A_dup <= ALU_ctrl_A;
-    	mem_data_A_dup <= mem_data_A;
-	mem_we_A_dup <= mem_we_A;
-	byte_A_dup <= byte_A;
-	mem_read_A_dup <= mem_read_A;
-	reg_we_A_dup <= reg_we_A;
-	reg_dest_A_dup <= reg_dest_A;
-	priv_status_A_dup <= priv_status_A_dup;
-	rob_idx_A_dup <= rob_idx_A;
-	inst_type_A_dup <= inst_type_A;
-	iret_A_dup <= iret_A;
+	-- Tamper the original decode signals and add some errors if the generator feels like it --
+	branch_A_dup <= branch_A xor branch_A_err;
+	jump_A_dup <= jump_A xor jump_A_err;
+	reg_data1_A_dup(31) <= reg_data1_A(31) xor reg_data1_A_err;
+	reg_data1_A_dup(30 DOWNTO 0) <= reg_data1_A(30 DOWNTO 0);
+	pc_A_dup(31) <= pc_A(31) xor pc_A_err;
+	pc_A_dup(30 DOWNTO 0) <= pc_A(30 DOWNTO 0);
+	reg_data2_A_dup(31) <= reg_data2_A(31) xor reg_data2_A_err;
+	reg_data2_A_dup(30 DOWNTO 0) <= reg_data2_A(30 DOWNTO 0);
+	inm_ext_A_dup(31) <= inm_ext_A(31) xor inm_ext_A_err;
+	inm_ext_A_dup(30 DOWNTO 0) <= inm_ext_A(30 DOWNTO 0);
+	inm_src2_v_A_dup <= inm_src2_v_A xor inm_src2_v_A_err;
+	branch_if_eq_A_dup <= branch_if_eq_A xor branch_if_eq_A_err;
+	ALU_ctrl_A_dup(2) <= ALU_ctrl_A(2) xor ALU_ctrl_A_err;
+	ALU_ctrl_A_dup(1 DOWNTO 0) <= ALU_ctrl_A(1 DOWNTO 0);
+	mem_data_A_dup(31) <= mem_data_A(31) xor mem_data_A_err;
+	mem_data_A_dup(30 DOWNTO 0) <= mem_data_A(30 DOWNTO 0);
+	mem_we_A_dup <= mem_we_A xor mem_we_A_err;
+	byte_A_dup <= byte_A xor byte_A_err;
+	mem_read_A_dup <= mem_read_A xor mem_read_A;
+	reg_we_A_dup <= reg_we_A xor reg_we_A_err;
+	reg_dest_A_dup(4) <= reg_dest_A(4) xor reg_dest_A_err;
+	reg_dest_A_dup(3 DOWNTO 0) <= reg_dest_A(3 DOWNTO 0);
+	priv_status_A_dup <= priv_status_A xor priv_status_A_err;
+	rob_idx_A_dup(3) <= rob_idx_A(3) xor rob_idx_A_err;
+	rob_idx_A_dup(2 DOWNTO 0) <= rob_idx_A(2 DOWNTO 0);
+	inst_type_A_dup(1) <= inst_type_A(1) xor inst_type_A_err;
+	inst_type_A_dup(0) <= inst_type_A(0);
+	iret_A_dup <= iret_A xor iret_A_err;
+
 
 
 	jump_or_branch_A_dup <= branch_A_dup OR jump_A_dup;
@@ -1942,8 +1935,6 @@ BEGIN
 	);
 
 	reg_A_C_reset_dup <= reg_A_C_reset_DU_dup OR exc_A_E OR error_detected;
-
-        ------ CONTINUE HERE ---------
 
 
 	reg_A_C_dup : reg_AC PORT MAP(
@@ -2252,7 +2243,8 @@ BEGIN
 		sb_store_commit => sb_store_commit_C_dup,
 		sb_squash => sb_squash_C_dup,
 		-- Error control
-		error_detected => error_detected
+		error_detected => error_detected,
+		new_recovery_pc => new_recovery_pc_ghost
 	);
 
     -- END 2nd pipeline --
@@ -2325,26 +2317,25 @@ BEGIN
 	error_gen : error_generator PORT MAP(
 		clk => clk,
 		reset => reset,
-		-- Decode --
-		D_inst_type_err => D_inst_type_err,
-		D_op_code_err => D_op_code_err,
-		D_reg_src1_err => D_reg_src1_err,
-		D_reg_src2_err => D_reg_src2_err,
-		D_reg_dest_err => D_reg_dest_err,
-		D_inm_ext_err => D_inm_ext_err,
-		D_ALU_ctrl_err => D_ALU_ctrl_err,
-		D_branch_err => D_branch_err,
-		D_branch_if_eq_err => D_branch_if_eq_err,
-		D_jump_err => D_jump_err,
-		D_reg_src1_v_err => D_reg_src1_v_err,
-		D_reg_src2_v_err => D_reg_src2_v_err,
-		D_inm_src2_v_err => D_inm_src2_v_err,
-		D_mem_write_err => D_mem_write_err,
-		D_byte_err => D_byte_err,
-		D_mem_read_err => D_mem_read_err,
-		D_reg_we_err => D_reg_we_err,
-		D_iret_err => D_iret_err,
-		D_invalid_inst_err => D_invalid_inst_err
+		branch_A_err => branch_A_err,
+		jump_A_err => jump_A_err,
+		reg_data1_A_err => reg_data1_A_err,
+		pc_A_err => pc_A_err,
+		reg_data2_A_err => reg_data2_A_err,
+		inm_ext_A_err => inm_ext_A_err,
+		inm_src2_v_A_err => inm_src2_v_A_err,
+		branch_if_eq_A_err => branch_if_eq_A_err,
+		ALU_ctrl_A_err => ALU_ctrl_A_err,
+		mem_data_A_err => mem_data_A_err,
+		mem_we_A_err => mem_we_A_err,
+		byte_A_err => byte_A_err,
+		mem_read_A_err => mem_read_A_err,
+		reg_we_A_err => reg_we_A_err,
+		reg_dest_A_err => reg_dest_A_err,
+		priv_status_A_err => priv_status_A_err,
+		rob_idx_A_err => rob_idx_A_err,
+		inst_type_A_err => inst_type_A_err,
+		iret_A_err  => iret_A_err
 	); 
 
 END structure;

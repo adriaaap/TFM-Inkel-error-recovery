@@ -67,7 +67,8 @@ ENTITY reorder_buffer IS
 		sb_store_commit : OUT STD_LOGIC;
 		sb_squash : OUT STD_LOGIC;
 		-- Error detection
-		error_detected : IN STD_LOGIC
+		error_detected : IN STD_LOGIC;
+		new_recovery_pc : OUT STD_LOGIC
 	);
 END reorder_buffer;
 
@@ -100,8 +101,6 @@ ARCHITECTURE structure OF reorder_buffer IS
 	SIGNAL pc_fields : pc_fields_t;
 	SIGNAL inst_type_fields : inst_type_fields_t;
 	SIGNAL store_fields : store_fields_t;
-
-	SIGNAL first_error : STD_LOGIC;
 
 	SIGNAL head : INTEGER RANGE 0 TO ROB_POSITIONS - 1;
 	SIGNAL tail : INTEGER RANGE 0 TO ROB_POSITIONS - 1;
@@ -161,15 +160,13 @@ BEGIN
 	p: PROCESS(clk)
 		VARIABLE rob_entry : INTEGER RANGE 0 TO ROB_POSITIONS - 1;
 		VARIABLE exception : BOOLEAN;
-		VARIABLE error 	   : BOOLEAN;
 	BEGIN
 		IF reset = '1' THEN
 			reset_rob(valid_fields, head, tail);
-			first_error <= '1';
 		ELSE
 			IF falling_edge(clk) THEN
 				-- Write stuff on falling edge
-				IF rob_we_1 = '1' AND NOT error THEN
+				IF rob_we_1 = '1' AND error_detected = '0' THEN
 					rob_entry := conv_integer(rob_w_pos_1);
 
 					valid_fields(rob_entry) <= '1';
@@ -184,7 +181,7 @@ BEGIN
 					store_fields(rob_entry) <= store_1;
 				END IF;
 
-				IF rob_we_2 = '1' AND NOT error THEN
+				IF rob_we_2 = '1' AND error_detected = '0' THEN
 					rob_entry := conv_integer(rob_w_pos_2);
 
 					valid_fields(rob_entry) <= '1';
@@ -199,7 +196,7 @@ BEGIN
 					store_fields(rob_entry) <= '0';
 				END IF;
 
-				IF rob_we_3 = '1' AND NOT error THEN
+				IF rob_we_3 = '1' AND error_detected = '0' THEN
 					rob_entry := conv_integer(rob_w_pos_3);
 
 					valid_fields(rob_entry) <= '1';
@@ -220,12 +217,10 @@ BEGIN
 				sb_squash <= '0';
 
 				-- If an error is detected on the last instruction of the buffer, rollback the execution
-				--error := (first_error = '1') AND (reg_data_fields(head) = 16);
-				--error := (first_error = '1') AND (pc_fields(head) = x"101C");
 				IF error_detected = '1' THEN
 					--error_detected <= '1';
 					--first_error <= '0'; -- TEMPORAL
-					pc_out <= pc_fields(head);
+					--pc_out <= pc_fields(head);
 					reset_rob(valid_fields, head, tail);
 				-- If there is no error, proceed as usual
 				ELSE
@@ -240,6 +235,7 @@ BEGIN
 						exc_code_out <= exc_code_fields(head);
 						exc_data_out <= exc_data_fields(head);
 						pc_out <= pc_fields(head);
+						new_recovery_pc <= '1';
 
 						valid_fields(head) <= '0';
 						head <= (head + 1) mod ROB_POSITIONS;
@@ -258,6 +254,7 @@ BEGIN
 						reg_v_out <= '0';
 						exc_out <= '0';
 						pc_out <= x"00000000";
+						new_recovery_pc <= '0';
 					END IF;
 
 					IF exception THEN
