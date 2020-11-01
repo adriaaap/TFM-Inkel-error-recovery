@@ -15,7 +15,8 @@ ENTITY pc IS
 	-- Error control
 	error_detected : IN STD_LOGIC;
 	recovery_pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-	new_recovery_pc : IN STD_LOGIC
+	new_recovery_pc : IN STD_LOGIC;
+	branch_was_taken : IN STD_LOGIC
     );
 END pc;
 
@@ -27,6 +28,7 @@ ARCHITECTURE structure OF pc IS
     SIGNAL pc_next : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL pc_exc : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL latest_executed_inst : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL recover_next : STD_LOGIC;
 BEGIN
     p : PROCESS(clk)
     BEGIN
@@ -36,18 +38,29 @@ BEGIN
                 pc_exc <= addr_boot;
 
 	    ELSIF error_detected = '1' THEN
-		-- pc_int <= recovery_pc;
-		pc_int <= latest_executed_inst + 4;
+		-- pc_int <= recovery_pc; -- does not work if the error occurs out of the ROB commit phase
+		--pc_int <= latest_executed_inst + 4; -- does not work if the latest instruction was a jump that succeeded
+		IF recover_next = '1' THEN
+		    pc_int <= latest_executed_inst + 4;
+		ELSE
+                    pc_int <= latest_executed_inst;
+		END IF;
             ELSE
                 pc_int <= pc_next;
 
                 IF exception = '1' THEN
                     pc_exc <= exception_addr;
                 END IF;
-            END IF;
+            
 
-	    IF new_recovery_pc = '1' THEN
-		latest_executed_inst <= recovery_pc;
+	        IF new_recovery_pc = '1' THEN
+		    latest_executed_inst <= recovery_pc;
+		    IF branch_was_taken = '1' THEN
+		        recover_next <= '0';
+		    ELSE
+		        recover_next <= '1';
+		    END IF;
+	        END IF;
 	    END IF;
 
         END IF;

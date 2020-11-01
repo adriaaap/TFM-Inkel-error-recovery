@@ -90,7 +90,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 			error_detected : IN STD_LOGIC;
 			recovery_pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-			new_recovery_pc : IN STD_LOGIC
+			new_recovery_pc : IN STD_LOGIC;
+			branch_was_taken : IN STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -437,11 +438,13 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			reg_dest_in : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
 			reg_data_in : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			mem_we_in : IN STD_LOGIC;
+			branch_taken_in : IN STD_LOGIC;
 			v : OUT STD_LOGIC;
 			reg_we_out : OUT STD_LOGIC;
 			reg_dest_out : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
 			reg_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-			mem_we_out : OUT STD_LOGIC
+			mem_we_out : OUT STD_LOGIC;
+			branch_taken_out : OUT STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -480,6 +483,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			exc_data_in_3 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			pc_in_3 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			inst_type_3 : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+			branch_taken_3 : IN STD_LOGIC;
 			reg_v_out : OUT STD_LOGIC;
 			reg_out : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
 			reg_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -504,7 +508,15 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			sb_store_commit : OUT STD_LOGIC;
 			sb_squash : OUT STD_LOGIC;
 			error_detected : IN STD_LOGIC;
-			new_recovery_pc : OUT STD_LOGIC
+			new_recovery_pc : OUT STD_LOGIC;
+			branch_was_taken : OUT STD_LOGIC;
+			reg_v_comp : OUT STD_LOGIC;
+			reg_comp : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+			reg_data_comp : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+			exc_comp : OUT STD_LOGIC;
+			exc_code_comp : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+			exc_data_comp : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+			pc_out_comp : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
 		);
 	END COMPONENT;
 
@@ -528,8 +540,10 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			pc_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			-- ALU 1 input
 			jump_addr_A_1 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			branch_taken_A_1 : IN STD_LOGIC;
 			-- ALU 2 input
 			jump_addr_A_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			branch_taken_A_2 : IN STD_LOGIC;
 			-- Cache 1 input
 			mem_req_C_1 : IN STD_LOGIC;
 			mem_we_C_1 : IN STD_LOGIC;
@@ -814,6 +828,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL exc_data_W_ALU : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL rob_idx_W_ALU : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL inst_type_W_ALU : STD_LOGIC_VECTOR(1 DOWNTO 0);
+	SIGNAL branch_taken_W_ALU : STD_LOGIC;
 	SIGNAL v_W_MUL : STD_LOGIC;
 	SIGNAL reg_we_W_MUL : STD_LOGIC;
 	SIGNAL reg_dest_W_MUL : STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -824,6 +839,15 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL exc_data_W_MUL : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL rob_idx_W_MUL : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL inst_type_W_MUL : STD_LOGIC_VECTOR(1 DOWNTO 0);
+
+	-- ROB verification signals
+	SIGNAL reg_v_comp : STD_LOGIC;
+	SIGNAL reg_comp : STD_LOGIC_VECTOR(4 DOWNTO 0);
+	SIGNAL reg_data_comp : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL exc_comp : STD_LOGIC;
+	SIGNAL exc_code_comp : STD_LOGIC_VECTOR(1 DOWNTO 0);
+	SIGNAL exc_data_comp : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL pc_out_comp : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
 	-- ROB output signals
 	SIGNAL reg_we_ROB : STD_LOGIC;
@@ -841,6 +865,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL reg_src2_D_inst_type_ROB : STD_LOGIC_VECTOR(1 DOWNTO 0);
 	SIGNAL reg_src2_D_data_ROB : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL new_recovery_pc : STD_LOGIC;
+	SIGNAL branch_was_taken : STD_LOGIC;
 
 	-- Segmentation registers signals
 	SIGNAL reg_F_D_reset : STD_LOGIC;
@@ -1031,6 +1056,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL exc_data_W_ALU_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL rob_idx_W_ALU_dup : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL inst_type_W_ALU_dup : STD_LOGIC_VECTOR(1 DOWNTO 0);
+	SIGNAL branch_taken_W_ALU_dup : STD_LOGIC;
 	SIGNAL v_W_MUL_dup : STD_LOGIC;
 	SIGNAL reg_we_W_MUL_dup : STD_LOGIC;
 	SIGNAL reg_dest_W_MUL_dup : STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -1059,6 +1085,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL pc_W_ALU_clean : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL rob_idx_W_ALU_clean : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL inst_type_W_ALU_clean : STD_LOGIC_VECTOR(1 DOWNTO 0);
+	SIGNAL branch_taken_W_ALU_clean : STD_LOGIC;
 	-- MUL --
 	SIGNAL v_W_MUL_clean : STD_LOGIC;
 	SIGNAL reg_we_W_MUL_clean : STD_LOGIC;
@@ -1067,6 +1094,15 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL pc_W_MUL_clean : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL rob_idx_W_MUL_clean : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL inst_type_W_MUL_clean : STD_LOGIC_VECTOR(1 DOWNTO 0);
+
+	-- ROB verification signals
+	SIGNAL reg_v_comp_dup : STD_LOGIC;
+	SIGNAL reg_comp_dup : STD_LOGIC_VECTOR(4 DOWNTO 0);
+	SIGNAL reg_data_comp_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL exc_comp_dup : STD_LOGIC;
+	SIGNAL exc_code_comp_dup : STD_LOGIC_VECTOR(1 DOWNTO 0);
+	SIGNAL exc_data_comp_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL pc_out_comp_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
 	-- ROB output signals
 	SIGNAL reg_we_ROB_ghost : STD_LOGIC;
@@ -1084,6 +1120,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL reg_src2_D_inst_type_ROB_dup : STD_LOGIC_VECTOR(1 DOWNTO 0);
 	SIGNAL reg_src2_D_data_ROB_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL new_recovery_pc_ghost : STD_LOGIC;
+	SIGNAL branch_was_taken_ghost : STD_LOGIC;
 
 	-- Segmentation registers signals
 	SIGNAL reg_F_D_reset_DU_ghost : STD_LOGIC;
@@ -1338,7 +1375,8 @@ BEGIN
 		pc => pc_F,
 		error_detected => error_detected,
 		recovery_pc => pc_ROB,
-		new_recovery_pc => new_recovery_pc
+		new_recovery_pc => new_recovery_pc,
+		branch_was_taken => branch_was_taken
 	);
 
 	priv_status : reg_priv_status PORT MAP(
@@ -1652,11 +1690,13 @@ BEGIN
 		reg_dest_in => reg_dest_A,
 		reg_data_in => ALU_out_A,
 		mem_we_in => '0',
+		branch_taken_in => branch_taken_A,
 		v => v_W_ALU,
 		reg_we_out => reg_we_W_ALU,
 		reg_dest_out => reg_dest_W_ALU,
 		reg_data_out => reg_data_W_ALU,
-		mem_we_out => open
+		mem_we_out => open,
+		branch_taken_out => branch_taken_W_ALU
 	);
 
 	reg_status_W_ALU: reg_status PORT MAP(
@@ -1737,11 +1777,13 @@ BEGIN
 		reg_dest_in => reg_dest_M5,
 		reg_data_in => mul_out_M5,
 		mem_we_in => '0',
+		branch_taken_in => '0',
 		v => v_W_MUL,
 		reg_we_out => reg_we_W_MUL,
 		reg_dest_out => reg_dest_W_MUL,
 		reg_data_out => reg_data_W_MUL,
-		mem_we_out => open
+		mem_we_out => open,
+		branch_taken_out => open
 	);
 
 	reg_status_W_MUL: reg_status PORT MAP(
@@ -1804,11 +1846,13 @@ BEGIN
 		reg_dest_in => reg_dest_C,
 		reg_data_in => reg_data_C,
 		mem_we_in => cache_we_C,
+		branch_taken_in => '0',
 		v => v_W_MEM,
 		reg_we_out => reg_we_W_MEM,
 		reg_dest_out => reg_dest_W_MEM,
 		reg_data_out => reg_data_W_MEM,
-		mem_we_out => mem_we_W_MEM
+		mem_we_out => mem_we_W_MEM,
+		branch_taken_out => open
 	);
 
 	reg_status_W_MEM: reg_status PORT MAP(
@@ -1873,6 +1917,7 @@ BEGIN
 		exc_data_in_3 => exc_data_W_ALU,
 		pc_in_3 => pc_W_ALU,
 		inst_type_3 => INST_TYPE_ALU,
+		branch_taken_3 => branch_taken_W_ALU,
 		-- Output
 		reg_v_out => reg_we_ROB,
 		reg_out => reg_dest_ROB,
@@ -1902,7 +1947,16 @@ BEGIN
 		sb_squash => sb_squash_C,
 		-- Error control
 		error_detected => error_detected,
-		new_recovery_pc => new_recovery_pc
+		new_recovery_pc => new_recovery_pc,
+		branch_was_taken => branch_was_taken,
+		-- Comparator outputs
+		reg_v_comp => reg_v_comp,
+		reg_comp => reg_comp,
+		reg_data_comp => reg_data_comp,
+		exc_comp => exc_comp,
+		exc_code_comp => exc_code_comp,
+		exc_data_comp => exc_data_comp,
+		pc_out_comp => pc_out_comp
 	);
 
 	debug_dump_ROB <= '0';
@@ -2164,11 +2218,13 @@ BEGIN
 		reg_dest_in => reg_dest_A_dup,
 		reg_data_in => ALU_out_A_dup,
 		mem_we_in => '0',
+		branch_taken_in => branch_taken_A_dup,
 		v => v_W_ALU_clean,
 		reg_we_out => reg_we_W_ALU_clean,
 		reg_dest_out => reg_dest_W_ALU_clean,
 		reg_data_out => reg_data_W_ALU_clean,
-		mem_we_out => open
+		mem_we_out => open,
+		branch_taken_out => branch_taken_W_ALU_clean
 	);
 
 	reg_status_W_ALU_dup: reg_status PORT MAP(
@@ -2201,6 +2257,7 @@ BEGIN
 	reg_dest_W_ALU_dup(3 DOWNTO 0) <= reg_dest_W_ALU_clean(3 DOWNTO 0);
 	reg_data_W_ALU_dup(31) <= reg_data_W_ALU_clean(31) xor reg_data_W_ALU_err;
 	reg_data_W_ALU_dup(30 DOWNTO 0) <= reg_data_W_ALU_clean(30 DOWNTO 0);
+	branch_taken_W_ALU_dup <= branch_taken_W_ALU_clean; ----> not muddled (for now)
 	pc_W_ALU_dup(31) <= pc_W_ALU_clean(31) xor pc_W_ALU_err;
 	pc_W_ALU_dup(30 DOWNTO 0) <= pc_W_ALU_clean(30 DOWNTO 0);
 	rob_idx_W_ALU_dup(3) <= rob_idx_W_ALU_clean(3) xor rob_idx_W_ALU_err;
@@ -2279,11 +2336,13 @@ BEGIN
 		reg_dest_in => reg_dest_M5_dup,
 		reg_data_in => mul_out_M5_dup,
 		mem_we_in => '0',
+		branch_taken_in => '0',
 		v => v_W_MUL_clean,
 		reg_we_out => reg_we_W_MUL_clean,
 		reg_dest_out => reg_dest_W_MUL_clean,
 		reg_data_out => reg_data_W_MUL_clean,
-		mem_we_out => open
+		mem_we_out => open,
+		branch_taken_out => open
 	);
 
 	reg_status_W_MUL_dup: reg_status PORT MAP(
@@ -2360,11 +2419,13 @@ BEGIN
 		reg_dest_in => reg_dest_C_dup,
 		reg_data_in => reg_data_C_dup,
 		mem_we_in => cache_we_C_dup,
+		branch_taken_in => '0',
 		v => v_W_MEM_clean,
 		reg_we_out => reg_we_W_MEM_clean,
 		reg_dest_out => reg_dest_W_MEM_clean,
 		reg_data_out => reg_data_W_MEM_clean,
-		mem_we_out => mem_we_W_MEM_clean
+		mem_we_out => mem_we_W_MEM_clean,
+		branch_taken_out => open
 	);
 
 	reg_status_W_MEM_dup: reg_status PORT MAP(
@@ -2445,6 +2506,7 @@ BEGIN
 		exc_data_in_3 => exc_data_W_ALU_dup,
 		pc_in_3 => pc_W_ALU_dup,
 		inst_type_3 => INST_TYPE_ALU,
+		branch_taken_3 => branch_taken_W_ALU_dup,
 		-- Output
 		reg_v_out => reg_we_ROB_ghost,
 		reg_out => reg_dest_ROB_ghost,
@@ -2474,32 +2536,43 @@ BEGIN
 		sb_squash => sb_squash_C_dup,
 		-- Error control
 		error_detected => error_detected,
-		new_recovery_pc => new_recovery_pc_ghost
+		new_recovery_pc => new_recovery_pc_ghost, -- should be compared
+		branch_was_taken => branch_was_taken_ghost, -- should be compared
+		-- Comparator outputs
+		reg_v_comp => reg_v_comp_dup,
+		reg_comp => reg_comp_dup,
+		reg_data_comp => reg_data_comp_dup,
+		exc_comp => exc_comp_dup,
+		exc_code_comp => exc_code_comp_dup,
+		exc_data_comp => exc_data_comp_dup,
+		pc_out_comp => pc_out_comp_dup
 	);
 
     -- END 2nd pipeline --
 
 	comparator : output_comparator PORT MAP(
 		-- Rob 1 input
-		reg_v_1 => reg_we_ROB,
-		reg_1 => reg_dest_ROB,
-		reg_data_1 => reg_data_ROB,
-		exc_1 => exc_ROB,
-		exc_code_1 => exc_code_ROB,
-		exc_data_1 => exc_data_ROB,
-		pc_1 => pc_ROB,
+		reg_v_1 => reg_v_comp,
+		reg_1 => reg_comp,
+		reg_data_1 => reg_data_comp,
+		exc_1 => exc_comp,
+		exc_code_1 => exc_code_comp,
+		exc_data_1 => exc_data_comp,
+		pc_1 => pc_out_comp,
 		-- Rob 2 input
-		reg_v_2 => reg_we_ROB_ghost,
-		reg_2 => reg_dest_ROB_ghost,
-		reg_data_2 => reg_data_ROB_ghost,
-		exc_2 => exc_ROB_ghost,
-		exc_code_2 => exc_code_ROB_ghost,
-		exc_data_2 => exc_data_ROB_ghost,
-		pc_2 => pc_ROB_ghost,
+		reg_v_2 => reg_v_comp_dup,
+		reg_2 => reg_comp_dup,
+		reg_data_2 => reg_data_comp_dup,
+		exc_2 => exc_comp_dup,
+		exc_code_2 => exc_code_comp_dup,
+		exc_data_2 => exc_data_comp_dup,
+		pc_2 => pc_out_comp_dup,
 		-- ALU 1 input
 		jump_addr_A_1 => jump_addr_A,
+		branch_taken_A_1 => branch_taken_A,
 		-- ALU 2 input
 		jump_addr_A_2 => jump_addr_A_ghost,
+		branch_taken_A_2 => branch_taken_A_dup,
 		-- Cache 1 input
 		mem_req_C_1 => mem_req_C,
 		mem_we_C_1 => mem_we_C,

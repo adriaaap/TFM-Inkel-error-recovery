@@ -22,8 +22,10 @@ entity output_comparator is
 	
 		-- ALU 1 input
 		jump_addr_A_1 	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+		branch_taken_A_1 : IN STD_LOGIC;
 		-- ALU 2 input
 		jump_addr_A_2 	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+		branch_taken_A_2 : IN STD_LOGIC;
 
 		-- Cache 1 input
 		mem_req_C_1 		: IN STD_LOGIC;
@@ -85,6 +87,7 @@ architecture structure of output_comparator is
 	SIGNAL exc_data_equal 		: STD_LOGIC;
 	SIGNAL pc_equal 		: STD_LOGIC;
 	SIGNAL jump_addr_A_equal 	: STD_LOGIC;
+	SIGNAL branch_taken_A_equal	: STD_LOGIC;
 	SIGNAL mem_req_C_equal 		: STD_LOGIC;
 	SIGNAL mem_we_C_equal 		: STD_LOGIC;
 	SIGNAL mem_addr_C_equal 	: STD_LOGIC;
@@ -118,6 +121,7 @@ begin
 	-- ALU comparison
 
 	jump_addr_A_equal <= '1' when jump_addr_A_1 = jump_addr_A_2 else '0';
+	branch_taken_A_equal <= '1' when branch_taken_A_1 = branch_taken_A_2 else '0';
 
 	-- Cache comparison
 
@@ -149,7 +153,7 @@ begin
 
 	-- Check if all tested signals are equal. If one is different, we have detected an error.
 	error_detected <= NOT (reg_v_equal AND reg_equal AND reg_data_equal AND exc_equal AND exc_code_equal AND exc_data_equal AND pc_equal
-				AND jump_addr_A_equal AND mem_req_C_equal AND mem_we_C_equal AND mem_addr_C_equal AND mem_data_out_C_equal
+				AND jump_addr_A_equal AND branch_taken_A_equal AND mem_req_C_equal AND mem_we_C_equal AND mem_addr_C_equal AND mem_data_out_C_equal
 				AND reg_F_D_reset_DU_equal AND reg_D_A_reset_DU_equal AND reg_F_D_we_equal AND reg_D_A_we_equal
 				AND load_PC_equal AND reset_PC_equal AND exc_F_E_equal AND exc_D_E_equal AND exc_code_F_E_equal
 				AND exc_code_D_E_equal AND exc_data_F_E_equal AND exc_data_D_E_equal

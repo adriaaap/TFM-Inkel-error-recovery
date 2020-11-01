@@ -39,6 +39,7 @@ ENTITY reorder_buffer IS
 		exc_data_in_3 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 		pc_in_3 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 		inst_type_3 : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+		branch_taken_3 : IN STD_LOGIC;
 		-- Pipeline outputs
 		reg_v_out : OUT STD_LOGIC;
 		reg_out : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -68,7 +69,16 @@ ENTITY reorder_buffer IS
 		sb_squash : OUT STD_LOGIC;
 		-- Error detection
 		error_detected : IN STD_LOGIC;
-		new_recovery_pc : OUT STD_LOGIC
+		new_recovery_pc : OUT STD_LOGIC;
+		branch_was_taken : OUT STD_LOGIC;
+		-- Comparator outputs
+		reg_v_comp : OUT STD_LOGIC;
+		reg_comp : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+		reg_data_comp : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+		exc_comp : OUT STD_LOGIC;
+		exc_code_comp : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+		exc_data_comp : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+		pc_out_comp : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
 	);
 END reorder_buffer;
 
@@ -91,6 +101,8 @@ ARCHITECTURE structure OF reorder_buffer IS
 
 	TYPE store_fields_t IS ARRAY(ROB_POSITIONS - 1 DOWNTO 0) OF STD_LOGIC;
 
+	TYPE branch_taken_fields_t IS ARRAY(ROB_POSITIONS - 1 DOWNTO 0) OF STD_LOGIC;
+
 	SIGNAL valid_fields : valid_fields_t;
 	SIGNAL reg_v_fields : reg_v_fields_t;
 	SIGNAL reg_fields : reg_fields_t;
@@ -101,6 +113,7 @@ ARCHITECTURE structure OF reorder_buffer IS
 	SIGNAL pc_fields : pc_fields_t;
 	SIGNAL inst_type_fields : inst_type_fields_t;
 	SIGNAL store_fields : store_fields_t;
+	SIGNAL branch_taken_fields : branch_taken_fields_t;
 
 	SIGNAL head : INTEGER RANGE 0 TO ROB_POSITIONS - 1;
 	SIGNAL tail : INTEGER RANGE 0 TO ROB_POSITIONS - 1;
@@ -179,6 +192,7 @@ BEGIN
 					pc_fields(rob_entry) <= pc_in_1;
 					inst_type_fields(rob_entry) <= inst_type_1;
 					store_fields(rob_entry) <= store_1;
+					branch_taken_fields(rob_entry) <= '0';
 				END IF;
 
 				IF rob_we_2 = '1' AND error_detected = '0' THEN
@@ -194,6 +208,7 @@ BEGIN
 					pc_fields(rob_entry) <= pc_in_2;
 					inst_type_fields(rob_entry) <= inst_type_2;
 					store_fields(rob_entry) <= '0';
+					branch_taken_fields(rob_entry) <= '0';
 				END IF;
 
 				IF rob_we_3 = '1' AND error_detected = '0' THEN
@@ -209,7 +224,11 @@ BEGIN
 					pc_fields(rob_entry) <= pc_in_3;
 					inst_type_fields(rob_entry) <= inst_type_3;
 					store_fields(rob_entry) <= '0';
+					branch_taken_fields(rob_entry) <= branch_taken_3;
 				END IF;
+
+
+
 			ELSIF rising_edge(clk) THEN
 				exception := FALSE;
 
@@ -236,6 +255,7 @@ BEGIN
 						exc_data_out <= exc_data_fields(head);
 						pc_out <= pc_fields(head);
 						new_recovery_pc <= '1';
+						branch_was_taken <= branch_taken_fields(head);
 
 						valid_fields(head) <= '0';
 						head <= (head + 1) mod ROB_POSITIONS;

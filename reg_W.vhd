@@ -11,11 +11,13 @@ ENTITY reg_W IS
 		reg_dest_in : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
 		reg_data_in : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 		mem_we_in : IN STD_LOGIC;
+		branch_taken_in : IN STD_LOGIC;
 		v : OUT STD_LOGIC;
 		reg_we_out : OUT STD_LOGIC;
 		reg_dest_out : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
 		reg_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-		mem_we_out : OUT STD_LOGIC
+		mem_we_out : OUT STD_LOGIC;
+		branch_taken_out : OUT STD_LOGIC
 	);
 END reg_W;
 
@@ -30,6 +32,7 @@ BEGIN
 				reg_data_out <= (OTHERS => '0');
 				mem_we_out <= '0';
 				v <= '0';
+				branch_taken_out <= '0';
 			ELSE
 				IF we = '1' THEN
 					reg_we_out <= reg_we_in;
@@ -40,6 +43,9 @@ BEGIN
 				ELSE
 					v <= '0';
 				END IF;
+			
+				branch_taken_out <= branch_taken_in;
+
 			END IF;
 		END IF;
 	END PROCESS;
