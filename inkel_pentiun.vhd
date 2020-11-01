@@ -579,6 +579,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 		PORT (clk : IN STD_LOGIC;
 		reset : IN STD_LOGIC;
 		
+		-- ALU stage --
 		branch_A_err : OUT STD_LOGIC;
 		jump_A_err : OUT STD_LOGIC;
 		reg_data1_A_err : OUT STD_LOGIC;
@@ -597,7 +598,57 @@ ARCHITECTURE structure OF inkel_pentiun IS
 		priv_status_A_err : OUT STD_LOGIC;
 		rob_idx_A_err : OUT STD_LOGIC;
 		inst_type_A_err : OUT STD_LOGIC;
-		iret_A_err : OUT STD_LOGIC
+		iret_A_err : OUT STD_LOGIC;
+
+    		-- Cache stage --
+    		cache_we_C_err : OUT STD_LOGIC;
+    		cache_re_C_err : OUT STD_LOGIC;
+    		byte_C_err : OUT STD_LOGIC;
+    		reg_we_C_err : OUT STD_LOGIC;
+    		priv_status_C_err : OUT STD_LOGIC;
+    		inst_type_C_err : OUT STD_LOGIC;
+    		rob_idx_C_err : OUT STD_LOGIC;
+    		reg_dest_C_err : OUT STD_LOGIC;
+    		pc_C_err : OUT STD_LOGIC;
+    		ALU_out_C_err : OUT STD_LOGIC;
+    		cache_data_in_C_err : OUT STD_LOGIC;
+
+    		-- MUL stage --
+    		mul_M5_err : OUT STD_LOGIC;
+    		mul_out_M5_err : OUT STD_LOGIC;
+    		reg_dest_M5_err : OUT STD_LOGIC;
+    		reg_we_M5_err : OUT STD_LOGIC;
+    		pc_M5_err : OUT STD_LOGIC;
+    		priv_status_M5_err : OUT STD_LOGIC;
+    		rob_idx_M5_err : OUT STD_LOGIC;
+    		inst_type_M5_err : OUT STD_LOGIC;
+
+    		-- Writeback stage --
+    		-- MEM -- 
+    		v_W_MEM_err : OUT STD_LOGIC;
+    		reg_we_W_MEM_err : OUT STD_LOGIC;
+    		reg_dest_W_MEM_err : OUT STD_LOGIC;
+    		reg_data_W_MEM_err : OUT STD_LOGIC;
+    		mem_we_W_MEM_err : OUT STD_LOGIC;
+    		pc_W_MEM_err : OUT STD_LOGIC;
+    		rob_idx_W_MEM_err : OUT STD_LOGIC;
+    		inst_type_W_MEM_err : OUT STD_LOGIC;
+    		-- ALU --
+    		v_W_ALU_err : OUT STD_LOGIC;
+    		reg_we_W_ALU_err : OUT STD_LOGIC;
+    		reg_dest_W_ALU_err : OUT STD_LOGIC;
+    		reg_data_W_ALU_err : OUT STD_LOGIC;
+    		pc_W_ALU_err : OUT STD_LOGIC;
+    		rob_idx_W_ALU_err : OUT STD_LOGIC;
+    		inst_type_W_ALU_err : OUT STD_LOGIC;
+    		-- MUL --
+    		v_W_MUL_err : OUT STD_LOGIC;
+    		reg_we_W_MUL_err : OUT STD_LOGIC;
+    		reg_dest_W_MUL_err : OUT STD_LOGIC;
+    		reg_data_W_MUL_err : OUT STD_LOGIC;
+    		pc_W_MUL_err : OUT STD_LOGIC;
+    		rob_idx_W_MUL_err : OUT STD_LOGIC;
+    		inst_type_W_MUL_err : OUT STD_LOGIC
 
 		);
 	END COMPONENT;
@@ -869,8 +920,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL branch_if_eq_A_dup : STD_LOGIC;
 	SIGNAL branch_taken_A_dup : STD_LOGIC;
 	SIGNAL mem_read_A_dup : STD_LOGIC;
-	SIGNAL reg_src1_v_A_dup : STD_LOGIC;
-	SIGNAL reg_src2_v_A_dup : STD_LOGIC;
+	SIGNAL reg_src1_v_A_dup : STD_LOGIC; -- unused signal? --
+	SIGNAL reg_src2_v_A_dup : STD_LOGIC; -- unused signal? --
 	SIGNAL inm_src2_v_A_dup : STD_LOGIC;
 	SIGNAL mem_we_A_dup : STD_LOGIC;
 	SIGNAL byte_A_dup : STD_LOGIC;
@@ -881,8 +932,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL ALU_ctrl_A_dup : STD_LOGIC_VECTOR(2 DOWNTO 0);
 	SIGNAL rob_idx_A_dup : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL reg_dest_A_dup : STD_LOGIC_VECTOR(4 DOWNTO 0);
-	SIGNAL reg_src1_A_dup : STD_LOGIC_VECTOR(4 DOWNTO 0);
-	SIGNAL reg_src2_A_dup : STD_LOGIC_VECTOR(4 DOWNTO 0);
+	SIGNAL reg_src1_A_dup : STD_LOGIC_VECTOR(4 DOWNTO 0); -- unused signal? --
+	SIGNAL reg_src2_A_dup : STD_LOGIC_VECTOR(4 DOWNTO 0); -- unused signal? --
 	SIGNAL pc_A_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL jump_addr_A_ghost : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL reg_data1_A_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -916,6 +967,20 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL sb_store_id_C_dup : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL sb_store_commit_C_dup : STD_LOGIC;
 	SIGNAL sb_squash_C_dup : STD_LOGIC;
+	-- These are the clean signals generated as outputs from the stage. These signals will then be assigned to their "dup" equivalents (which are treated as the final output 
+        -- of their stage) when processed with error signals. This step was not required for the ALU because the base output signal comes from the first pipeline.
+	SIGNAL cache_we_C_clean : STD_LOGIC;
+	SIGNAL cache_re_C_clean : STD_LOGIC;
+	SIGNAL byte_C_clean : STD_LOGIC;
+	SIGNAL reg_we_C_clean : STD_LOGIC;
+	SIGNAL priv_status_C_clean : STD_LOGIC; --exists but avoid sending it to fetch
+	SIGNAL inst_type_C_clean : STD_LOGIC_VECTOR(1 DOWNTO 0);
+	SIGNAL rob_idx_C_clean : STD_LOGIC_VECTOR(3 DOWNTO 0);
+	SIGNAL reg_dest_C_clean : STD_LOGIC_VECTOR(4 DOWNTO 0);
+	SIGNAL pc_C_clean : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL ALU_out_C_clean : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL cache_data_in_C_clean : STD_LOGIC_VECTOR(31 DOWNTO 0);
+
 
 	-- Mul stage signals
 	SIGNAL Mul_pipeline_reset_dup : STD_LOGIC;
@@ -934,6 +999,15 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL priv_status_M5_dup : STD_LOGIC;
 	SIGNAL rob_idx_M5_dup : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL inst_type_M5_dup : STD_LOGIC_VECTOR(1 DOWNTO 0);
+	-- The MUL stage is a multi-cycle, multi-stage unit. However, for the sake of simplicity, we will only generate errors at the output of the 5th register (i.e., on the final result)
+	SIGNAL mul_M5_clean : STD_LOGIC;
+	SIGNAL mul_out_M5_clean : STD_LOGIC_VECTOR(31 downto 0);
+	SIGNAL reg_dest_M5_clean : STD_LOGIC_VECTOR(4 downto 0);
+	SIGNAL reg_we_M5_clean : STD_LOGIC;
+	SIGNAL pc_M5_clean : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL priv_status_M5_clean : STD_LOGIC;
+	SIGNAL rob_idx_M5_clean : STD_LOGIC_VECTOR(3 DOWNTO 0);
+	SIGNAL inst_type_M5_clean : STD_LOGIC_VECTOR(1 DOWNTO 0);
 
 	-- Writeback stage signals
 	SIGNAL v_W_MEM_dup : STD_LOGIC;
@@ -967,6 +1041,32 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL exc_data_W_MUL_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL rob_idx_W_MUL_dup : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL inst_type_W_MUL_dup : STD_LOGIC_VECTOR(1 DOWNTO 0);
+	-- Clean writeback stage signals --
+	-- MEM -- 
+	SIGNAL v_W_MEM_clean : STD_LOGIC;
+	SIGNAL reg_we_W_MEM_clean : STD_LOGIC;
+	SIGNAL reg_dest_W_MEM_clean : STD_LOGIC_VECTOR(4 DOWNTO 0);
+	SIGNAL reg_data_W_MEM_clean : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL mem_we_W_MEM_clean : STD_LOGIC;
+	SIGNAL pc_W_MEM_clean : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL rob_idx_W_MEM_clean : STD_LOGIC_VECTOR(3 DOWNTO 0);
+	SIGNAL inst_type_W_MEM_clean : STD_LOGIC_VECTOR(1 DOWNTO 0);
+	-- ALU --
+	SIGNAL v_W_ALU_clean : STD_LOGIC;
+	SIGNAL reg_we_W_ALU_clean : STD_LOGIC;
+	SIGNAL reg_dest_W_ALU_clean : STD_LOGIC_VECTOR(4 DOWNTO 0);
+	SIGNAL reg_data_W_ALU_clean : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL pc_W_ALU_clean : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL rob_idx_W_ALU_clean : STD_LOGIC_VECTOR(3 DOWNTO 0);
+	SIGNAL inst_type_W_ALU_clean : STD_LOGIC_VECTOR(1 DOWNTO 0);
+	-- MUL --
+	SIGNAL v_W_MUL_clean : STD_LOGIC;
+	SIGNAL reg_we_W_MUL_clean : STD_LOGIC;
+	SIGNAL reg_dest_W_MUL_clean : STD_LOGIC_VECTOR(4 DOWNTO 0);
+	SIGNAL reg_data_W_MUL_clean : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL pc_W_MUL_clean : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL rob_idx_W_MUL_clean : STD_LOGIC_VECTOR(3 DOWNTO 0);
+	SIGNAL inst_type_W_MUL_clean : STD_LOGIC_VECTOR(1 DOWNTO 0);
 
 	-- ROB output signals
 	SIGNAL reg_we_ROB_ghost : STD_LOGIC;
@@ -996,10 +1096,6 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL reg_A_C_we_dup : STD_LOGIC;
 	SIGNAL reg_F_D_we_ghost : STD_LOGIC;
 	SIGNAL reg_D_A_we_ghost : STD_LOGIC;
-
-	-- Segmentation registers signals
-
-
 
 
 
@@ -1045,26 +1141,79 @@ ARCHITECTURE structure OF inkel_pentiun IS
     -- END 2nd pipeline signals
 
     -- Signals from error generator --
+    -- In every stage, we might introduce errors on the input data for that stage. The input data comes from the register that feeds the stage. --
+    -- For instance, for the ALU step, the errors will be introduced to the data as it comes out from register reg_DA. --
+    -- If the stage produces wrong outputs due to an induced error, these shall be stored on the next register (if the error is not detected immediately)
     -- ALU --
-    SIGNAL branch_A_err : STD_LOGIC;
-    SIGNAL jump_A_err : STD_LOGIC;
-    SIGNAL reg_data1_A_err : STD_LOGIC;
-    SIGNAL pc_A_err : STD_LOGIC;
-    SIGNAL reg_data2_A_err : STD_LOGIC;
-    SIGNAL inm_ext_A_err : STD_LOGIC;
-    SIGNAL inm_src2_v_A_err : STD_LOGIC;
-    SIGNAL branch_if_eq_A_err : STD_LOGIC;
-    SIGNAL ALU_ctrl_A_err : STD_LOGIC;
-    SIGNAL mem_data_A_err : STD_LOGIC;
-	SIGNAL mem_we_A_err : STD_LOGIC;
-	SIGNAL byte_A_err : STD_LOGIC;
-	SIGNAL mem_read_A_err : STD_LOGIC;
-	SIGNAL reg_we_A_err : STD_LOGIC;
-	SIGNAL reg_dest_A_err : STD_LOGIC;
-	SIGNAL priv_status_A_err : STD_LOGIC;
-    SIGNAL rob_idx_A_err : STD_LOGIC;
-	SIGNAL inst_type_A_err : STD_LOGIC;
-	SIGNAL iret_A_err : STD_LOGIC;
+    	SIGNAL branch_A_err : STD_LOGIC;
+    	SIGNAL jump_A_err : STD_LOGIC;
+    	SIGNAL reg_data1_A_err : STD_LOGIC;
+    	SIGNAL pc_A_err : STD_LOGIC;
+    	SIGNAL reg_data2_A_err : STD_LOGIC;
+    	SIGNAL inm_ext_A_err : STD_LOGIC;
+    	SIGNAL inm_src2_v_A_err : STD_LOGIC;
+    	SIGNAL branch_if_eq_A_err : STD_LOGIC;
+    	SIGNAL ALU_ctrl_A_err : STD_LOGIC;
+    	SIGNAL mem_data_A_err : STD_LOGIC;
+    	SIGNAL mem_we_A_err : STD_LOGIC;
+    	SIGNAL byte_A_err : STD_LOGIC;
+    	SIGNAL mem_read_A_err : STD_LOGIC;
+    	SIGNAL reg_we_A_err : STD_LOGIC;
+    	SIGNAL reg_dest_A_err : STD_LOGIC;
+    	SIGNAL priv_status_A_err : STD_LOGIC;
+    	SIGNAL rob_idx_A_err : STD_LOGIC;
+    	SIGNAL inst_type_A_err : STD_LOGIC;
+    	SIGNAL iret_A_err : STD_LOGIC;
+
+    	-- Cache stage --
+    	SIGNAL cache_we_C_err : STD_LOGIC;
+    	SIGNAL cache_re_C_err : STD_LOGIC;
+    	SIGNAL byte_C_err : STD_LOGIC;
+    	SIGNAL reg_we_C_err : STD_LOGIC;
+    	SIGNAL priv_status_C_err : STD_LOGIC;
+    	SIGNAL inst_type_C_err : STD_LOGIC;
+    	SIGNAL rob_idx_C_err : STD_LOGIC;
+    	SIGNAL reg_dest_C_err : STD_LOGIC;
+    	SIGNAL pc_C_err : STD_LOGIC;
+    	SIGNAL ALU_out_C_err : STD_LOGIC;
+    	SIGNAL cache_data_in_C_err : STD_LOGIC;
+
+    	-- MUL stage --
+    	SIGNAL mul_M5_err : STD_LOGIC;
+    	SIGNAL mul_out_M5_err : STD_LOGIC;
+    	SIGNAL reg_dest_M5_err : STD_LOGIC;
+    	SIGNAL reg_we_M5_err : STD_LOGIC;
+    	SIGNAL pc_M5_err : STD_LOGIC;
+    	SIGNAL priv_status_M5_err : STD_LOGIC;
+    	SIGNAL rob_idx_M5_err : STD_LOGIC;
+    	SIGNAL inst_type_M5_err : STD_LOGIC;
+
+    	-- Writeback stage --
+    	-- MEM -- 
+    	SIGNAL v_W_MEM_err : STD_LOGIC;
+    	SIGNAL reg_we_W_MEM_err : STD_LOGIC;
+    	SIGNAL reg_dest_W_MEM_err : STD_LOGIC;
+    	SIGNAL reg_data_W_MEM_err : STD_LOGIC;
+    	SIGNAL mem_we_W_MEM_err : STD_LOGIC;
+    	SIGNAL pc_W_MEM_err : STD_LOGIC;
+    	SIGNAL rob_idx_W_MEM_err : STD_LOGIC;
+    	SIGNAL inst_type_W_MEM_err : STD_LOGIC;
+    	-- ALU --
+    	SIGNAL v_W_ALU_err : STD_LOGIC;
+    	SIGNAL reg_we_W_ALU_err : STD_LOGIC;
+    	SIGNAL reg_dest_W_ALU_err : STD_LOGIC;
+    	SIGNAL reg_data_W_ALU_err : STD_LOGIC;
+    	SIGNAL pc_W_ALU_err : STD_LOGIC;
+    	SIGNAL rob_idx_W_ALU_err : STD_LOGIC;
+    	SIGNAL inst_type_W_ALU_err : STD_LOGIC;
+    	-- MUL --
+    	SIGNAL v_W_MUL_err : STD_LOGIC;
+    	SIGNAL reg_we_W_MUL_err : STD_LOGIC;
+    	SIGNAL reg_dest_W_MUL_err : STD_LOGIC;
+    	SIGNAL reg_data_W_MUL_err : STD_LOGIC;
+    	SIGNAL pc_W_MUL_err : STD_LOGIC;
+    	SIGNAL rob_idx_W_MUL_err : STD_LOGIC;
+    	SIGNAL inst_type_W_MUL_err : STD_LOGIC;
 
 
 
@@ -1948,13 +2097,13 @@ BEGIN
 		reg_dest_in => reg_dest_A_dup,
 		ALU_out_in => ALU_out_A_dup,
 		mem_data_in => mem_data_A_BP_dup,
-		mem_we_out => cache_we_C_dup,
-		byte_out => byte_C_dup,
-		mem_read_out => cache_re_C_dup,
-		reg_we_out => reg_we_C_dup,
-		reg_dest_out => reg_dest_C_dup,
-		ALU_out_out => ALU_out_C_dup,
-		mem_data_out => cache_data_in_C_dup
+		mem_we_out => cache_we_C_clean,
+		byte_out => byte_C_clean,
+		mem_read_out => cache_re_C_clean,
+		reg_we_out => reg_we_C_clean,
+		reg_dest_out => reg_dest_C_clean,
+		ALU_out_out => ALU_out_C_clean,
+		mem_data_out => cache_data_in_C_clean
 	);
 
 
@@ -1972,14 +2121,35 @@ BEGIN
 		exc_data_old => exc_data_A,
 		rob_idx_in => rob_idx_A_dup,
 		inst_type_in => inst_type_A_dup,
-		pc_out => pc_C_dup,
-		priv_status_out => priv_status_C_dup,
+		pc_out => pc_C_clean,
+		priv_status_out => priv_status_C_clean,
 		exc_out => exc_C_dup,
 		exc_code_out => exc_code_C_dup,
 		exc_data_out => exc_data_C_dup,
-		rob_idx_out => rob_idx_C_dup,
-		inst_type_out => inst_type_C_dup
+		rob_idx_out => rob_idx_C_clean,
+		inst_type_out => inst_type_C_clean
 	);
+
+        -- Inject errors to AC register outputs here --
+
+	cache_we_C_dup <= cache_we_C_clean xor cache_we_C_err;
+	cache_re_C_dup <= cache_re_C_clean xor cache_re_C_err;
+	byte_C_dup <= byte_C_clean xor byte_C_err;
+	reg_we_C_dup <= reg_we_C_clean xor reg_we_C_err;
+	priv_status_C_dup <= priv_status_C_clean xor priv_status_C_err;
+	inst_type_C_dup(1) <= inst_type_C_clean(1) xor inst_type_C_err;
+	inst_type_C_dup(0) <= inst_type_C_clean(0);
+	rob_idx_C_dup(3) <= rob_idx_C_clean(3) xor rob_idx_C_err;
+	rob_idx_C_dup(2 DOWNTO 0) <= rob_idx_C_clean(2 DOWNTO 0);
+	reg_dest_C_dup(4) <= reg_dest_C_clean(4) xor reg_dest_C_err;
+	reg_dest_C_dup(3 DOWNTO 0) <= reg_dest_C_clean(3 DOWNTO 0);
+	pc_C_dup(31) <= pc_C_clean(31) xor pc_C_err;
+	pc_C_dup(30 DOWNTO 0) <= pc_C_clean(30 DOWNTO 0);
+	ALU_out_C_dup(31) <= ALU_out_C_clean(31) xor ALU_out_C_err;
+	ALU_out_C_dup(30 DOWNTO 0) <= ALU_out_C_clean(30 DOWNTO 0);
+	cache_data_in_C_dup(31) <= cache_data_in_C_clean(31) xor cache_data_in_C_err;
+	cache_data_in_C_dup(30 DOWNTO 0) <= cache_data_in_C_clean(30 DOWNTO 0);
+
 
 	-------------------------------- ALU Pipeline -----------------------------------------
 
@@ -1994,10 +2164,10 @@ BEGIN
 		reg_dest_in => reg_dest_A_dup,
 		reg_data_in => ALU_out_A_dup,
 		mem_we_in => '0',
-		v => v_W_ALU_dup,
-		reg_we_out => reg_we_W_ALU_dup,
-		reg_dest_out => reg_dest_W_ALU_dup,
-		reg_data_out => reg_data_W_ALU_dup,
+		v => v_W_ALU_clean,
+		reg_we_out => reg_we_W_ALU_clean,
+		reg_dest_out => reg_dest_W_ALU_clean,
+		reg_data_out => reg_data_W_ALU_clean,
 		mem_we_out => open
 	);
 
@@ -2015,14 +2185,28 @@ BEGIN
 		exc_data_old => exc_data_A,
 		rob_idx_in => rob_idx_A_dup,
 		inst_type_in => inst_type_A_dup,
-		pc_out => pc_W_ALU_dup,
+		pc_out => pc_W_ALU_clean,
 		priv_status_out => open,
 		exc_out => exc_W_ALU_dup,
 		exc_code_out => exc_code_W_ALU_dup,
 		exc_data_out => exc_data_W_ALU_dup,
-		rob_idx_out => rob_idx_W_ALU_dup,
-		inst_type_out => inst_type_W_ALU_dup
+		rob_idx_out => rob_idx_W_ALU_clean,
+		inst_type_out => inst_type_W_ALU_clean
 	);
+
+	-- Errors from reg_W_ALU to ROB --
+	v_W_ALU_dup <= v_W_ALU_clean xor v_W_ALU_err;
+ 	reg_we_W_ALU_dup <= reg_we_W_ALU_clean xor reg_we_W_ALU_err;
+	reg_dest_W_ALU_dup(4) <= reg_dest_W_ALU_clean(4) xor reg_dest_W_ALU_err;
+	reg_dest_W_ALU_dup(3 DOWNTO 0) <= reg_dest_W_ALU_clean(3 DOWNTO 0);
+	reg_data_W_ALU_dup(31) <= reg_data_W_ALU_clean(31) xor reg_data_W_ALU_err;
+	reg_data_W_ALU_dup(30 DOWNTO 0) <= reg_data_W_ALU_clean(30 DOWNTO 0);
+	pc_W_ALU_dup(31) <= pc_W_ALU_clean(31) xor pc_W_ALU_err;
+	pc_W_ALU_dup(30 DOWNTO 0) <= pc_W_ALU_clean(30 DOWNTO 0);
+	rob_idx_W_ALU_dup(3) <= rob_idx_W_ALU_clean(3) xor rob_idx_W_ALU_err;
+	rob_idx_W_ALU_dup(2 DOWNTO 0) <= rob_idx_W_ALU_clean(2 DOWNTO 0);
+	inst_type_W_ALU_dup(1) <= inst_type_W_ALU_clean(1) xor inst_type_W_ALU_err;
+	inst_type_W_ALU_dup(0) <= inst_type_W_ALU_clean(0);
 
 	-------------------------------- Mul Pipeline -----------------------------------------
 
@@ -2045,10 +2229,10 @@ BEGIN
 		reg_dest_M3 => reg_dest_M3_dup,
 		M4_mul => mul_M4_dup,
 		reg_dest_M4 => reg_dest_M4_dup,
-		M5_mul => mul_M5_dup,
-		reg_dest_out => reg_dest_M5_dup,
-		reg_we_out => reg_we_M5_dup,
-		Dout => mul_out_M5_dup,
+		M5_mul => mul_M5_clean,
+		reg_dest_out => reg_dest_M5_clean,
+		reg_we_out => reg_we_M5_clean,
+		Dout => mul_out_M5_clean,
 		-- Reg Status signals --
 		pc_in => pc_A_dup,
 		priv_status_in => priv_status_A_dup,
@@ -2060,14 +2244,30 @@ BEGIN
 		exc_data_old => exc_data_A,
 		rob_idx_in => rob_idx_A_dup,
 		inst_type_in => inst_type_A_dup,
-		pc_out => pc_M5_dup,
-		priv_status_out => priv_status_M5_dup,
+		pc_out => pc_M5_clean,
+		priv_status_out => priv_status_M5_clean,
 		exc_out => exc_M5_dup,
 		exc_code_out => exc_code_M5_dup,
 		exc_data_out => exc_data_M5_dup,
-		rob_idx_out => rob_idx_M5_dup,
-		inst_type_out => inst_type_M5_dup
+		rob_idx_out => rob_idx_M5_clean,
+		inst_type_out => inst_type_M5_clean
 	);
+
+	-- Inject errors to the output of the last MUL register, M5 --
+	mul_M5_dup <= mul_M5_clean xor mul_M5_err; 
+	mul_out_M5_dup(31) <= mul_out_M5_clean(31) xor mul_out_M5_err;
+	mul_out_M5_dup(30 DOWNTO 0) <= mul_out_M5_clean(30 DOWNTO 0);
+	reg_dest_M5_dup(4) <= reg_dest_M5_clean(4) xor reg_dest_M5_err;
+	reg_dest_M5_dup(3 DOWNTO 0) <= reg_dest_M5_clean(3 DOWNTO 0); 
+	reg_we_M5_dup <= reg_we_M5_clean xor reg_we_M5_err;
+	pc_M5_dup(31) <= pc_M5_clean(31) xor pc_M5_err;
+	pc_M5_dup(30 DOWNTO 0) <= pc_M5_clean(30 DOWNTO 0);
+	priv_status_M5_dup <= priv_status_M5_clean xor priv_status_M5_err;
+	rob_idx_M5_dup(3) <= rob_idx_M5_clean(3) xor rob_idx_M5_err;
+	rob_idx_M5_dup(2 DOWNTO 0) <= rob_idx_M5_clean(2 DOWNTO 0);
+	inst_type_M5_dup(1) <= inst_type_M5_clean(1) xor inst_type_M5_err;
+	inst_type_M5_dup(0) <= inst_type_M5_clean(0);
+
 
 	reg_W_MUL_reset_dup <= reset OR to_std_logic(inst_type_M5_dup /= INST_TYPE_MUL) OR NOT mul_M5_dup OR error_detected;
 
@@ -2079,10 +2279,10 @@ BEGIN
 		reg_dest_in => reg_dest_M5_dup,
 		reg_data_in => mul_out_M5_dup,
 		mem_we_in => '0',
-		v => v_W_MUL_dup,
-		reg_we_out => reg_we_W_MUL_dup,
-		reg_dest_out => reg_dest_W_MUL_dup,
-		reg_data_out => reg_data_W_MUL_dup,
+		v => v_W_MUL_clean,
+		reg_we_out => reg_we_W_MUL_clean,
+		reg_dest_out => reg_dest_W_MUL_clean,
+		reg_data_out => reg_data_W_MUL_clean,
 		mem_we_out => open
 	);
 
@@ -2100,14 +2300,28 @@ BEGIN
 		exc_data_old => exc_data_M5_dup,
 		rob_idx_in => rob_idx_M5_dup,
 		inst_type_in => inst_type_M5_dup,
-		pc_out => pc_W_MUL_dup,
+		pc_out => pc_W_MUL_clean,
 		priv_status_out => open,
 		exc_out => exc_W_MUL_dup,
 		exc_code_out => exc_code_W_MUL_dup,
 		exc_data_out => exc_data_W_MUL_dup,
-		rob_idx_out => rob_idx_W_MUL_dup,
-		inst_type_out => inst_type_W_MUL_dup
+		rob_idx_out => rob_idx_W_MUL_clean,
+		inst_type_out => inst_type_W_MUL_clean
 	);
+
+	-- Errors from reg_W_MUL to ROB --
+	v_W_MUL_dup <= v_W_MUL_clean xor v_W_MUL_err;
+ 	reg_we_W_MUL_dup <= reg_we_W_MUL_clean xor reg_we_W_MUL_err;
+	reg_dest_W_MUL_dup(4) <= reg_dest_W_MUL_clean(4) xor reg_dest_W_MUL_err;
+	reg_dest_W_MUL_dup(3 DOWNTO 0) <= reg_dest_W_MUL_clean(3 DOWNTO 0);
+	reg_data_W_MUL_dup(31) <= reg_data_W_MUL_clean(31) xor reg_data_W_MUL_err;
+	reg_data_W_MUL_dup(30 DOWNTO 0) <= reg_data_W_MUL_clean(30 DOWNTO 0);
+	pc_W_MUL_dup(31) <= pc_W_MUL_clean(31) xor pc_W_MUL_err;
+	pc_W_MUL_dup(30 DOWNTO 0) <= pc_W_MUL_clean(30 DOWNTO 0);
+	rob_idx_W_MUL_dup(3) <= rob_idx_W_MUL_clean(3) xor rob_idx_W_MUL_err;
+	rob_idx_W_MUL_dup(2 DOWNTO 0) <= rob_idx_W_MUL_clean(2 DOWNTO 0);
+	inst_type_W_MUL_dup(1) <= inst_type_W_MUL_clean(1) xor inst_type_W_MUL_err;
+	inst_type_W_MUL_dup(0) <= inst_type_W_MUL_clean(0);
 
 	-------------------------------- Cache  ----------------------------------------------
 
@@ -2146,11 +2360,11 @@ BEGIN
 		reg_dest_in => reg_dest_C_dup,
 		reg_data_in => reg_data_C_dup,
 		mem_we_in => cache_we_C_dup,
-		v => v_W_MEM_dup,
-		reg_we_out => reg_we_W_MEM_dup,
-		reg_dest_out => reg_dest_W_MEM_dup,
-		reg_data_out => reg_data_W_MEM_dup,
-		mem_we_out => mem_we_W_MEM_dup
+		v => v_W_MEM_clean,
+		reg_we_out => reg_we_W_MEM_clean,
+		reg_dest_out => reg_dest_W_MEM_clean,
+		reg_data_out => reg_data_W_MEM_clean,
+		mem_we_out => mem_we_W_MEM_clean
 	);
 
 	reg_status_W_MEM_dup: reg_status PORT MAP(
@@ -2167,14 +2381,30 @@ BEGIN
 		exc_data_old => exc_data_C_dup,
 		rob_idx_in => rob_idx_C_dup,
 		inst_type_in => inst_type_C_dup,
-		pc_out => pc_W_MEM_dup,
+		pc_out => pc_W_MEM_clean,
 		priv_status_out => open,
 		exc_out => exc_W_MEM_dup,
 		exc_code_out => exc_code_W_MEM_dup,
 		exc_data_out => exc_data_W_MEM_dup,
-		rob_idx_out => rob_idx_W_MEM_dup,
-		inst_type_out => inst_type_W_MEM_dup
+		rob_idx_out => rob_idx_W_MEM_clean,
+		inst_type_out => inst_type_W_MEM_clean
 	);
+    
+    
+    -- Errors from reg_W_MEM to ROB --
+	v_W_MEM_dup <= v_W_MEM_clean xor v_W_MEM_err;
+ 	reg_we_W_MEM_dup <= reg_we_W_MEM_clean xor reg_we_W_MEM_err;
+	reg_dest_W_MEM_dup(4) <= reg_dest_W_MEM_clean(4) xor reg_dest_W_MEM_err;
+	reg_dest_W_MEM_dup(3 DOWNTO 0) <= reg_dest_W_MEM_clean(3 DOWNTO 0);
+	reg_data_W_MEM_dup(31) <= reg_data_W_MEM_clean(31) xor reg_data_W_MEM_err;
+	reg_data_W_MEM_dup(30 DOWNTO 0) <= reg_data_W_MEM_clean(30 DOWNTO 0);
+    	mem_we_W_MEM_dup <= mem_we_W_MEM_clean xor mem_we_W_MEM_err;
+	pc_W_MEM_dup(31) <= pc_W_MEM_clean(31) xor pc_W_MEM_err;
+	pc_W_MEM_dup(30 DOWNTO 0) <= pc_W_MEM_clean(30 DOWNTO 0);
+	rob_idx_W_MEM_dup(3) <= rob_idx_W_MEM_clean(3) xor rob_idx_W_MEM_err;
+	rob_idx_W_MEM_dup(2 DOWNTO 0) <= rob_idx_W_MEM_clean(2 DOWNTO 0);
+	inst_type_W_MEM_dup(1) <= inst_type_W_MEM_clean(1) xor inst_type_W_MEM_err;
+	inst_type_W_MEM_dup(0) <= inst_type_W_MEM_clean(0);
 
 	---------------------------- Reorder Buffer --------------------------------
 
@@ -2317,6 +2547,7 @@ BEGIN
 	error_gen : error_generator PORT MAP(
 		clk => clk,
 		reset => reset,
+		-- ALU stage --
 		branch_A_err => branch_A_err,
 		jump_A_err => jump_A_err,
 		reg_data1_A_err => reg_data1_A_err,
@@ -2335,7 +2566,57 @@ BEGIN
 		priv_status_A_err => priv_status_A_err,
 		rob_idx_A_err => rob_idx_A_err,
 		inst_type_A_err => inst_type_A_err,
-		iret_A_err  => iret_A_err
+		iret_A_err  => iret_A_err,
+
+    		-- Cache stage --
+    		cache_we_C_err => cache_we_C_err,
+    		cache_re_C_err => cache_re_C_err,
+    		byte_C_err => byte_C_err,
+    		reg_we_C_err => reg_we_C_err,
+    		priv_status_C_err => priv_status_C_err,
+    		inst_type_C_err => inst_type_C_err,
+    		rob_idx_C_err => rob_idx_C_err,
+    		reg_dest_C_err => reg_dest_C_err,
+    		pc_C_err => pc_C_err,
+    		ALU_out_C_err => ALU_out_C_err,
+    		cache_data_in_C_err => cache_data_in_C_err,
+
+    		-- MUL stage --
+    		mul_M5_err => mul_M5_err,
+    		mul_out_M5_err => mul_out_M5_err,
+    		reg_dest_M5_err => reg_dest_M5_err,
+    		reg_we_M5_err => reg_we_M5_err,
+    		pc_M5_err => pc_M5_err,
+    		priv_status_M5_err => priv_status_M5_err,
+    		rob_idx_M5_err => rob_idx_M5_err,
+    		inst_type_M5_err => inst_type_M5_err,
+
+    		-- Writeback stage --
+    		-- MEM -- 
+    		v_W_MEM_err => v_W_MEM_err,
+    		reg_we_W_MEM_err => reg_we_W_MEM_err,
+    		reg_dest_W_MEM_err => reg_dest_W_MEM_err,
+    		reg_data_W_MEM_err => reg_data_W_MEM_err,
+    		mem_we_W_MEM_err => mem_we_W_MEM_err,
+    		pc_W_MEM_err => pc_W_MEM_err,
+    		rob_idx_W_MEM_err => rob_idx_W_MEM_err,
+    		inst_type_W_MEM_err => inst_type_W_MEM_err,
+    		-- ALU --
+    		v_W_ALU_err => v_W_ALU_err,
+    		reg_we_W_ALU_err => reg_we_W_ALU_err,
+    		reg_dest_W_ALU_err => reg_dest_W_ALU_err,
+    		reg_data_W_ALU_err => reg_data_W_ALU_err,
+    		pc_W_ALU_err => pc_W_ALU_err,
+    		rob_idx_W_ALU_err => rob_idx_W_ALU_err,
+    		inst_type_W_ALU_err=> inst_type_W_ALU_err,
+    		-- MUL --
+    		v_W_MUL_err => v_W_MUL_err,
+    		reg_we_W_MUL_err => reg_we_W_MUL_err,
+    		reg_dest_W_MUL_err => reg_dest_W_MUL_err,
+    		reg_data_W_MUL_err => reg_data_W_MUL_err,
+    		pc_W_MUL_err => pc_W_MUL_err,
+    		rob_idx_W_MUL_err => rob_idx_W_MUL_err,
+    		inst_type_W_MUL_err => inst_type_W_MUL_err
 	); 
 
 END structure;
