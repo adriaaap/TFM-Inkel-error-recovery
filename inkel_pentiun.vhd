@@ -491,6 +491,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			exc_code_out : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
 			exc_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 			pc_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+			valid_out : OUT STD_LOGIC;
 			tail_we : IN STD_LOGIC;
 			rollback_tail : IN STD_LOGIC;
 			tail_out : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
@@ -509,14 +510,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			sb_squash : OUT STD_LOGIC;
 			error_detected : IN STD_LOGIC;
 			new_recovery_pc : OUT STD_LOGIC;
-			branch_was_taken : OUT STD_LOGIC;
-			reg_v_comp : OUT STD_LOGIC;
-			reg_comp : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-			reg_data_comp : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-			exc_comp : OUT STD_LOGIC;
-			exc_code_comp : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
-			exc_data_comp : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-			pc_out_comp : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+			branch_was_taken : OUT STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -530,6 +524,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			exc_code_1 : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
 			exc_data_1 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			pc_1 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			valid_1	: IN STD_LOGIC;
 			-- Dup rob input
 			reg_v_2 : IN STD_LOGIC;
 			reg_2 : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -538,6 +533,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			exc_code_2 : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
 			exc_data_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			pc_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+			valid_2 : IN STD_LOGIC;
 			-- ALU 1 input
 			jump_addr_A_1 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			branch_taken_A_1 : IN STD_LOGIC;
@@ -840,15 +836,6 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL rob_idx_W_MUL : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL inst_type_W_MUL : STD_LOGIC_VECTOR(1 DOWNTO 0);
 
-	-- ROB verification signals
-	SIGNAL reg_v_comp : STD_LOGIC;
-	SIGNAL reg_comp : STD_LOGIC_VECTOR(4 DOWNTO 0);
-	SIGNAL reg_data_comp : STD_LOGIC_VECTOR(31 DOWNTO 0);
-	SIGNAL exc_comp : STD_LOGIC;
-	SIGNAL exc_code_comp : STD_LOGIC_VECTOR(1 DOWNTO 0);
-	SIGNAL exc_data_comp : STD_LOGIC_VECTOR(31 DOWNTO 0);
-	SIGNAL pc_out_comp : STD_LOGIC_VECTOR(31 DOWNTO 0);
-
 	-- ROB output signals
 	SIGNAL reg_we_ROB : STD_LOGIC;
 	SIGNAL reg_dest_ROB : STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -857,6 +844,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL exc_code_ROB : STD_LOGIC_VECTOR(1 DOWNTO 0);
 	SIGNAL exc_data_ROB : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL pc_ROB : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL valid_ROB : STD_LOGIC;
 	SIGNAL debug_dump_ROB : STD_LOGIC;
 	SIGNAL reg_src1_D_p_ROB : STD_LOGIC;
 	SIGNAL reg_src1_D_inst_type_ROB : STD_LOGIC_VECTOR(1 DOWNTO 0);
@@ -866,6 +854,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL reg_src2_D_data_ROB : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL new_recovery_pc : STD_LOGIC;
 	SIGNAL branch_was_taken : STD_LOGIC;
+	SIGNAL reg_we_ROB_validated : STD_LOGIC;
+	SIGNAL exc_ROB_validated : STD_LOGIC;
 
 	-- Segmentation registers signals
 	SIGNAL reg_F_D_reset : STD_LOGIC;
@@ -1095,15 +1085,6 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL rob_idx_W_MUL_clean : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL inst_type_W_MUL_clean : STD_LOGIC_VECTOR(1 DOWNTO 0);
 
-	-- ROB verification signals
-	SIGNAL reg_v_comp_dup : STD_LOGIC;
-	SIGNAL reg_comp_dup : STD_LOGIC_VECTOR(4 DOWNTO 0);
-	SIGNAL reg_data_comp_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
-	SIGNAL exc_comp_dup : STD_LOGIC;
-	SIGNAL exc_code_comp_dup : STD_LOGIC_VECTOR(1 DOWNTO 0);
-	SIGNAL exc_data_comp_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
-	SIGNAL pc_out_comp_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
-
 	-- ROB output signals
 	SIGNAL reg_we_ROB_ghost : STD_LOGIC;
 	SIGNAL reg_dest_ROB_ghost : STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -1112,6 +1093,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL exc_code_ROB_ghost : STD_LOGIC_VECTOR(1 DOWNTO 0);
 	SIGNAL exc_data_ROB_ghost : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL pc_ROB_ghost : STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SIGNAL valid_ROB_ghost : STD_LOGIC;
 	SIGNAL debug_dump_ROB_ghost : STD_LOGIC;
 	SIGNAL reg_src1_D_p_ROB_dup : STD_LOGIC;
 	SIGNAL reg_src1_D_inst_type_ROB_dup : STD_LOGIC_VECTOR(1 DOWNTO 0);
@@ -1369,7 +1351,7 @@ BEGIN
 		addr_jump => jump_addr_A,
 		branch_taken => branch_taken_A,
 		exception_addr => pc_ROB,
-		exception => exc_ROB,
+		exception => exc_ROB_validated,
 		iret => iret_A,
 		load_PC => load_PC,
 		pc => pc_F,
@@ -1382,7 +1364,7 @@ BEGIN
 	priv_status : reg_priv_status PORT MAP(
 		clk => clk,
 		reset => reset,
-		exc_W => exc_ROB,
+		exc_W => exc_ROB_validated,
 		iret_A => iret_A,
 		priv_status => priv_status_F
 	);
@@ -1476,10 +1458,10 @@ BEGIN
 		src2 => reg_src2_D,
 		data1 => reg_data1_D,
 		data2 => reg_data2_D,
-		we => reg_we_ROB,
+		we => reg_we_ROB_validated,
 		dest => reg_dest_ROB,
 		data_in => reg_data_ROB,
-		exception => exc_ROB,
+		exception => exc_ROB_validated,
 		exc_code => exc_code_ROB,
 		exc_data => exc_data_ROB
 	);
@@ -1926,6 +1908,7 @@ BEGIN
 		exc_code_out => exc_code_ROB,
 		exc_data_out => exc_data_ROB,
 		pc_out => pc_ROB,
+		valid_out => valid_ROB,
 		-- Counter
 		tail_we => rob_count_DU,
 		rollback_tail => rob_rollback_DU,
@@ -1948,19 +1931,14 @@ BEGIN
 		-- Error control
 		error_detected => error_detected,
 		new_recovery_pc => new_recovery_pc,
-		branch_was_taken => branch_was_taken,
-		-- Comparator outputs
-		reg_v_comp => reg_v_comp,
-		reg_comp => reg_comp,
-		reg_data_comp => reg_data_comp,
-		exc_comp => exc_comp,
-		exc_code_comp => exc_code_comp,
-		exc_data_comp => exc_data_comp,
-		pc_out_comp => pc_out_comp
+		branch_was_taken => branch_was_taken
 	);
 
 	debug_dump_ROB <= '0';
 	pc_out <= pc_ROB;
+
+	reg_we_ROB_validated <= reg_we_ROB AND NOT error_detected;
+	exc_ROB_validated <= exc_ROB AND NOT error_detected;
 
 
     -- Secondary redundant pipeline --
@@ -2515,6 +2493,7 @@ BEGIN
 		exc_code_out => exc_code_ROB_ghost,
 		exc_data_out => exc_data_ROB_ghost,
 		pc_out => pc_ROB_ghost,
+		valid_out => valid_ROB_ghost,
 		-- Counter
 		tail_we => rob_count_DU_dup,
 		rollback_tail => rob_rollback_DU_dup,
@@ -2537,36 +2516,30 @@ BEGIN
 		-- Error control
 		error_detected => error_detected,
 		new_recovery_pc => new_recovery_pc_ghost, -- should be compared
-		branch_was_taken => branch_was_taken_ghost, -- should be compared
-		-- Comparator outputs
-		reg_v_comp => reg_v_comp_dup,
-		reg_comp => reg_comp_dup,
-		reg_data_comp => reg_data_comp_dup,
-		exc_comp => exc_comp_dup,
-		exc_code_comp => exc_code_comp_dup,
-		exc_data_comp => exc_data_comp_dup,
-		pc_out_comp => pc_out_comp_dup
+		branch_was_taken => branch_was_taken_ghost -- should be compared
 	);
 
     -- END 2nd pipeline --
 
 	comparator : output_comparator PORT MAP(
 		-- Rob 1 input
-		reg_v_1 => reg_v_comp,
-		reg_1 => reg_comp,
-		reg_data_1 => reg_data_comp,
-		exc_1 => exc_comp,
-		exc_code_1 => exc_code_comp,
-		exc_data_1 => exc_data_comp,
-		pc_1 => pc_out_comp,
+		reg_v_1 => reg_we_ROB,
+		reg_1 => reg_dest_ROB,
+		reg_data_1 => reg_data_ROB,
+		exc_1 => exc_ROB,
+		exc_code_1 => exc_code_ROB,
+		exc_data_1 => exc_data_ROB,
+		pc_1 => pc_ROB,
+		valid_1 => valid_ROB,
 		-- Rob 2 input
-		reg_v_2 => reg_v_comp_dup,
-		reg_2 => reg_comp_dup,
-		reg_data_2 => reg_data_comp_dup,
-		exc_2 => exc_comp_dup,
-		exc_code_2 => exc_code_comp_dup,
-		exc_data_2 => exc_data_comp_dup,
-		pc_2 => pc_out_comp_dup,
+		reg_v_2 => reg_we_ROB_ghost,
+		reg_2 => reg_dest_ROB_ghost,
+		reg_data_2 => reg_data_ROB_ghost,
+		exc_2 => exc_ROB_ghost,
+		exc_code_2 => exc_code_ROB_ghost,
+		exc_data_2 => exc_data_ROB_ghost,
+		pc_2 => pc_ROB_ghost,
+		valid_2 => valid_ROB_ghost,
 		-- ALU 1 input
 		jump_addr_A_1 => jump_addr_A,
 		branch_taken_A_1 => branch_taken_A,

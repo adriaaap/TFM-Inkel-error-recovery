@@ -11,6 +11,7 @@ entity output_comparator is
 		exc_code_1 	: IN STD_LOGIC_VECTOR(1 DOWNTO 0);
 		exc_data_1 	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 		pc_1       	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+		valid_1		: IN STD_LOGIC;
 		-- Dup rob input
 		reg_v_2    	: IN STD_LOGIC;
 		reg_2      	: IN STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -19,7 +20,8 @@ entity output_comparator is
 		exc_code_2 	: IN STD_LOGIC_VECTOR(1 DOWNTO 0);
 		exc_data_2 	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 		pc_2       	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-	
+		valid_2		: IN STD_LOGIC;
+		
 		-- ALU 1 input
 		jump_addr_A_1 	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 		branch_taken_A_1 : IN STD_LOGIC;
@@ -86,6 +88,9 @@ architecture structure of output_comparator is
 	SIGNAL exc_code_equal 		: STD_LOGIC;
 	SIGNAL exc_data_equal 		: STD_LOGIC;
 	SIGNAL pc_equal 		: STD_LOGIC;
+	SIGNAL valid_equal		: STD_LOGIC;
+	SIGNAL ROB_equal		: STD_LOGIC;
+	SIGNAL ROB_error		: STD_LOGIC;
 	SIGNAL jump_addr_A_equal 	: STD_LOGIC;
 	SIGNAL branch_taken_A_equal	: STD_LOGIC;
 	SIGNAL mem_req_C_equal 		: STD_LOGIC;
@@ -117,6 +122,11 @@ begin
 	exc_code_equal <= '1' when exc_code_1 = exc_code_2 else '0';
 	exc_data_equal <= '1' when exc_data_1 = exc_data_2 else '0';
 	pc_equal <= '1' when pc_1 = pc_2 else '0';
+	valid_equal <= '1' when valid_1 = valid_2 else '0';
+
+	ROB_equal <= reg_v_equal AND reg_equal AND reg_data_equal AND exc_equal AND exc_code_equal AND exc_data_equal AND pc_equal;
+
+	ROB_error <= NOT valid_equal OR (valid_1 AND NOT ROB_equal);
 
 	-- ALU comparison
 
@@ -152,8 +162,7 @@ begin
 	exc_data_D_E_equal <= '1' when exc_data_D_E_1 = exc_data_D_E_2 else '0'; 	
 
 	-- Check if all tested signals are equal. If one is different, we have detected an error.
-	error_detected <= NOT (reg_v_equal AND reg_equal AND reg_data_equal AND exc_equal AND exc_code_equal AND exc_data_equal AND pc_equal
-				AND jump_addr_A_equal AND branch_taken_A_equal AND mem_req_C_equal AND mem_we_C_equal AND mem_addr_C_equal AND mem_data_out_C_equal
+	error_detected <= ROB_error OR NOT ( jump_addr_A_equal AND branch_taken_A_equal AND mem_req_C_equal AND mem_we_C_equal AND mem_addr_C_equal AND mem_data_out_C_equal
 				AND reg_F_D_reset_DU_equal AND reg_D_A_reset_DU_equal AND reg_F_D_we_equal AND reg_D_A_we_equal
 				AND load_PC_equal AND reset_PC_equal AND exc_F_E_equal AND exc_D_E_equal AND exc_code_F_E_equal
 				AND exc_code_D_E_equal AND exc_data_F_E_equal AND exc_data_D_E_equal

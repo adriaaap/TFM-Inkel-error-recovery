@@ -48,6 +48,7 @@ ENTITY reorder_buffer IS
 		exc_code_out : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
 		exc_data_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 		pc_out : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+		valid_out : OUT STD_LOGIC;
 		-- Counter
 		tail_we : IN STD_LOGIC;
 		rollback_tail : IN STD_LOGIC;
@@ -70,15 +71,7 @@ ENTITY reorder_buffer IS
 		-- Error detection
 		error_detected : IN STD_LOGIC;
 		new_recovery_pc : OUT STD_LOGIC;
-		branch_was_taken : OUT STD_LOGIC;
-		-- Comparator outputs
-		reg_v_comp : OUT STD_LOGIC;
-		reg_comp : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-		reg_data_comp : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-		exc_comp : OUT STD_LOGIC;
-		exc_code_comp : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
-		exc_data_comp : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-		pc_out_comp : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+		branch_was_taken : OUT STD_LOGIC
 	);
 END reorder_buffer;
 
@@ -241,6 +234,12 @@ BEGIN
 					--first_error <= '0'; -- TEMPORAL
 					--pc_out <= pc_fields(head);
 					reset_rob(valid_fields, head, tail);
+					-- Abort the instruction we were about to commit
+					reg_v_out <= '0';
+					exc_out <= '0';
+					pc_out <= x"00000000";
+					new_recovery_pc <= '0';
+					valid_out <= '0';
 				-- If there is no error, proceed as usual
 				ELSE
 					--error_detected <= '0';
@@ -256,6 +255,7 @@ BEGIN
 						pc_out <= pc_fields(head);
 						new_recovery_pc <= '1';
 						branch_was_taken <= branch_taken_fields(head);
+						valid_out <= '1';
 
 						valid_fields(head) <= '0';
 						head <= (head + 1) mod ROB_POSITIONS;
@@ -275,6 +275,7 @@ BEGIN
 						exc_out <= '0';
 						pc_out <= x"00000000";
 						new_recovery_pc <= '0';
+						valid_out <= '0';
 					END IF;
 
 					IF exception THEN
