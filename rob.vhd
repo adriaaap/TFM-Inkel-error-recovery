@@ -76,7 +76,7 @@ ENTITY reorder_buffer IS
 END reorder_buffer;
 
 ARCHITECTURE structure OF reorder_buffer IS
-	CONSTANT ROB_POSITIONS : INTEGER := 10;
+	CONSTANT ROB_POSITIONS : INTEGER := 11;
 
 	TYPE valid_fields_t IS ARRAY(ROB_POSITIONS - 1 DOWNTO 0) OF STD_LOGIC;
 

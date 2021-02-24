@@ -29,7 +29,9 @@ ENTITY cache_data IS
 		sb_addr        : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
 		sb_we          : IN  STD_LOGIC;
 		sb_is_byte     : IN  STD_LOGIC;
-		sb_data_in     : IN  STD_LOGIC_VECTOR(31 DOWNTO 0)
+		sb_data_in     : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+        error_detected : IN  STD_LOGIC;
+        cache_block    : OUT STD_LOGIC
 	);
 END cache_data;
 

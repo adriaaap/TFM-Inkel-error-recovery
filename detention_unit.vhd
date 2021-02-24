@@ -64,7 +64,7 @@ BEGIN
 	conflict_ALU <= '1' WHEN mem_read_A = '1' AND done_C = '1' AND ((reg_src1_D = reg_dest_A AND reg_src1_v_D = '1') OR (reg_src2_D = reg_dest_A AND reg_src2_v_D = '1' AND NOT mem_we_D = '1')) ELSE '0';
 	conflict_MUL_M1 <= '1' WHEN  mul_M1 = '1' AND ((reg_src1_D = reg_dest_A AND reg_src1_v_D = '1') OR (reg_src2_D = reg_dest_A AND reg_src2_v_D = '1')) ELSE '0';
 	conflict_MUL_M2 <= '1' WHEN  mul_M2 = '1' AND ((reg_src1_D = reg_dest_M2 AND reg_src1_v_D = '1') OR (reg_src2_D = reg_dest_M2 AND reg_src2_v_D = '1')) ELSE '0';
-	conflict_MUL_M3 <= '1' WHEN  mul_M3 = '1' AND ((reg_src1_D = reg_dest_M3 AND reg_src1_v_D = '1') OR (reg_src2_D = reg_dest_M3 AND reg_src2_v_D = '1' AND NOT mem_we_D = '1')) ELSE '0';
+	conflict_MUL_M3 <= '1' WHEN  mul_M3 = '1' AND ((reg_src1_D = reg_dest_M3 AND reg_src1_v_D = '1') OR (reg_src2_D = reg_dest_M3 AND reg_src2_v_D = '1')) ELSE '0';
 	conflict_MUL_M4 <= '1' WHEN  mul_M4 = '1' AND ((reg_src1_D = reg_dest_M4 AND reg_src1_v_D = '1') OR (reg_src2_D = reg_dest_M4 AND reg_src2_v_D = '1' AND NOT mem_we_D = '1')) ELSE '0';
 
 	conflict_MUL_ALU <= conflict_MUL_M1 OR conflict_MUL_M2 OR conflict_MUL_M3 OR conflict_MUL_M4;

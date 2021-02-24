@@ -145,7 +145,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			sb_store_id     : IN  STD_LOGIC_VECTOR(3 DOWNTO 0);
 			sb_store_commit : IN  STD_LOGIC;
 			sb_squash       : IN  STD_LOGIC;
-			sb_error_detected : IN  STD_LOGIC
+			sb_error_detected : IN  STD_LOGIC;
+            cache_block     : OUT STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -783,6 +784,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL sb_store_id_C : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL sb_store_commit_C : STD_LOGIC;
 	SIGNAL sb_squash_C : STD_LOGIC;
+    SIGNAL cache_block : STD_LOGIC;
 
 	-- Mul stage signals
 	SIGNAL Mul_pipeline_reset : STD_LOGIC;
@@ -982,6 +984,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL sb_store_id_C_dup : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL sb_store_commit_C_dup : STD_LOGIC;
 	SIGNAL sb_squash_C_dup : STD_LOGIC;
+    SIGNAL cache_block_ghost : STD_LOGIC;
 	-- These are the clean signals generated as outputs from the stage. These signals will then be assigned to their "dup" equivalents (which are treated as the final output 
         -- of their stage) when processed with error signals. This step was not required for the ALU because the base output signal comes from the first pipeline.
 	SIGNAL cache_we_C_clean : STD_LOGIC;
@@ -1815,7 +1818,8 @@ BEGIN
 		sb_store_id => sb_store_id_C,
 		sb_store_commit => sb_store_commit_C,
 		sb_squash => sb_squash_C,
-		sb_error_detected => error_detected
+		sb_error_detected => error_detected,
+        cache_block => cache_block
 	);
 
 	reg_W_MEM_reset <= reset OR to_std_logic(inst_type_C /= INST_TYPE_MEM) OR NOT done_C OR error_detected;
@@ -2059,7 +2063,7 @@ BEGIN
 	mem_data_A_dup(30 DOWNTO 0) <= mem_data_A(30 DOWNTO 0);
 	mem_we_A_dup <= mem_we_A xor mem_we_A_err;
 	byte_A_dup <= byte_A xor byte_A_err;
-	mem_read_A_dup <= mem_read_A xor mem_read_A;
+	mem_read_A_dup <= mem_read_A xor mem_read_A_err;
 	reg_we_A_dup <= reg_we_A xor reg_we_A_err;
 	reg_dest_A_dup(4) <= reg_dest_A(4) xor reg_dest_A_err;
 	reg_dest_A_dup(3 DOWNTO 0) <= reg_dest_A(3 DOWNTO 0);
@@ -2384,7 +2388,8 @@ BEGIN
 		sb_store_id => sb_store_id_C_dup,
 		sb_store_commit => sb_store_commit_C_dup,
 		sb_squash => sb_squash_C_dup,
-		sb_error_detected => error_detected
+		sb_error_detected => error_detected,
+        cache_block => cache_block_ghost
 	);
 
 	reg_W_MEM_reset_dup <= reset OR to_std_logic(inst_type_C_dup /= INST_TYPE_MEM) OR NOT done_C_dup OR error_detected;

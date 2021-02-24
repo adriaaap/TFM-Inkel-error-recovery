@@ -26,7 +26,8 @@ ENTITY cache_stage IS
 		sb_store_id     : IN  STD_LOGIC_VECTOR(3 DOWNTO 0);
 		sb_store_commit : IN  STD_LOGIC;
 		sb_squash       : IN  STD_LOGIC;
-		sb_error_detected : IN  STD_LOGIC
+		sb_error_detected : IN  STD_LOGIC;
+        cache_block     : OUT STD_LOGIC
 	);
 END cache_stage;
 
@@ -55,7 +56,9 @@ ARCHITECTURE cache_stage_behavior OF cache_stage IS
 			sb_addr        : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
 			sb_we          : IN  STD_LOGIC;
 			sb_is_byte     : IN  STD_LOGIC;
-			sb_data_in     : IN  STD_LOGIC_VECTOR(31 DOWNTO 0)
+			sb_data_in     : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+            error_detected : IN  STD_LOGIC;
+            cache_block    : OUT STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -129,7 +132,9 @@ BEGIN
 		sb_addr => sb_cache_addr,
 		sb_we => sb_cache_we,
 		sb_is_byte => sb_cache_is_byte,
-		sb_data_in => sb_cache_data
+		sb_data_in => sb_cache_data,
+        error_detected => sb_error_detected,
+        cache_block => cache_block
 	);
 
 	sb : store_buffer PORT MAP(
