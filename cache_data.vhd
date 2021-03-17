@@ -272,7 +272,7 @@ BEGIN
 			END IF;
         ELSIF state_i = WAITSB_BLOCKER THEN
             cache_block <= '1';
-			IF state_nx_i = READY AND THEN
+			IF state_nx_i = READY THEN
 				IF re = '1' OR we = '1' THEN
 					LRU_execute(lru_fields, hit_line_num_i);
 				END IF;
