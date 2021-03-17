@@ -5,7 +5,7 @@ USE ieee.numeric_std.all;
 PACKAGE utils IS
 	FUNCTION to_std_logic(value : BOOLEAN) RETURN std_logic;
 
-	TYPE data_cache_state_t IS (READY, WAITSB, LINEREQ, LINEREPL, LINEREPL_BLOCKER, LINEREQ_BLOCKER);
+	TYPE data_cache_state_t IS (READY, WAITSB, LINEREQ, LINEREPL, WAITSB_BLOCKER, LINEREPL_BLOCKER, ERROR);
 	TYPE inst_cache_state_t IS (READY, LINEREQ);
 	TYPE store_buffer_state_t IS (READY, FLUSHING, FLUSHED);
 

@@ -91,6 +91,7 @@ architecture structure of output_comparator is
 	SIGNAL valid_equal		: STD_LOGIC;
 	SIGNAL ROB_equal		: STD_LOGIC;
 	SIGNAL ROB_error		: STD_LOGIC;
+    SIGNAL MEM_error        : STD_LOGIC;
 	SIGNAL jump_addr_A_equal 	: STD_LOGIC;
 	SIGNAL branch_taken_A_equal	: STD_LOGIC;
 	SIGNAL mem_req_C_equal 		: STD_LOGIC;
@@ -124,9 +125,11 @@ begin
 	pc_equal <= '1' when pc_1 = pc_2 else '0';
 	valid_equal <= '1' when valid_1 = valid_2 else '0';
 
+
+    -- Only check for equal ROB result if the output intends to be valid
 	ROB_equal <= reg_v_equal AND reg_equal AND reg_data_equal AND exc_equal AND exc_code_equal AND exc_data_equal AND pc_equal;
 
-	ROB_error <= NOT valid_equal OR (valid_1 AND NOT ROB_equal);
+	ROB_error <= NOT valid_equal OR (valid_equal AND NOT ROB_equal);
 
 	-- ALU comparison
 
@@ -139,6 +142,13 @@ begin
 	mem_we_C_equal <= '1' when mem_we_C_1 = mem_we_C_2 else '0'; 		
 	mem_addr_C_equal <= '1' when mem_addr_C_1 = mem_addr_C_2 else '0'; 	
 	mem_data_out_C_equal <= '1' when mem_data_out_C_1 = mem_data_out_C_2 else '0';
+    
+    -- Only check for equal MEM values if a request is intended by both pipelines
+    
+    MEM_error <= NOT mem_req_C_equal -- Error if only one pipeline has a request
+                OR (mem_req_C_equal AND (mem_we_C_equal AND mem_we_C_1) AND NOT (mem_addr_C_equal AND mem_data_out_C_equal)) -- Error if both pipelines request a store with different data/addr
+                OR (mem_req_C_equal AND (mem_we_C_equal AND NOT mem_we_C_1) AND NOT mem_addr_C_equal) -- Error if both pipelines request a load with different addr
+                OR (mem_req_C_equal AND NOT mem_we_C_equal); -- Error if one pipeline request a store and the other a load
 
 	-- Segmentation regs comparison
 
@@ -162,7 +172,7 @@ begin
 	exc_data_D_E_equal <= '1' when exc_data_D_E_1 = exc_data_D_E_2 else '0'; 	
 
 	-- Check if all tested signals are equal. If one is different, we have detected an error.
-	error_detected <= ROB_error OR NOT ( jump_addr_A_equal AND branch_taken_A_equal AND mem_req_C_equal AND mem_we_C_equal AND mem_addr_C_equal AND mem_data_out_C_equal
+	error_detected <= ROB_error OR MEM_error OR NOT ( jump_addr_A_equal AND branch_taken_A_equal 
 				AND reg_F_D_reset_DU_equal AND reg_D_A_reset_DU_equal AND reg_F_D_we_equal AND reg_D_A_we_equal
 				AND load_PC_equal AND reset_PC_equal AND exc_F_E_equal AND exc_D_E_equal AND exc_code_F_E_equal
 				AND exc_code_D_E_equal AND exc_data_F_E_equal AND exc_data_D_E_equal

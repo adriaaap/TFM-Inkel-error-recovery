@@ -282,7 +282,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			reg_D_A_we     : OUT STD_LOGIC;
 			reg_A_C_we     : OUT STD_LOGIC;
 			rob_count      : OUT STD_LOGIC;
-			rob_rollback   : OUT STD_LOGIC
+			rob_rollback   : OUT STD_LOGIC;
+            cache_block    : IN STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -862,10 +863,13 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	-- Segmentation registers signals
 	SIGNAL reg_F_D_reset : STD_LOGIC;
 	SIGNAL reg_F_D_reset_DU : STD_LOGIC;
+    SIGNAL reg_F_D_reset_status : STD_LOGIC;
 	SIGNAL reg_D_A_reset : STD_LOGIC;
 	SIGNAL reg_D_A_reset_DU : STD_LOGIC;
+    SIGNAL reg_D_A_reset_status : STD_LOGIC;
 	SIGNAL reg_A_C_reset : STD_LOGIC;
 	SIGNAL reg_A_C_reset_DU : STD_LOGIC;
+    SIGNAL reg_A_C_reset_status : STD_LOGIC;
 	SIGNAL reg_W_MEM_reset : STD_LOGIC;
 	SIGNAL reg_W_ALU_reset : STD_LOGIC;
 	SIGNAL reg_W_MUL_reset : STD_LOGIC;
@@ -984,7 +988,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL sb_store_id_C_dup : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL sb_store_commit_C_dup : STD_LOGIC;
 	SIGNAL sb_squash_C_dup : STD_LOGIC;
-    SIGNAL cache_block_ghost : STD_LOGIC;
+    SIGNAL cache_block_dup : STD_LOGIC;
 	-- These are the clean signals generated as outputs from the stage. These signals will then be assigned to their "dup" equivalents (which are treated as the final output 
         -- of their stage) when processed with error signals. This step was not required for the ALU because the base output signal comes from the first pipeline.
 	SIGNAL cache_we_C_clean : STD_LOGIC;
@@ -1112,6 +1116,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL reg_D_A_reset_DU_ghost : STD_LOGIC;
 	SIGNAL reg_A_C_reset_dup : STD_LOGIC;
 	SIGNAL reg_A_C_reset_DU_dup : STD_LOGIC;
+    SIGNAL reg_A_C_reset_status_dup : STD_LOGIC;
 	SIGNAL reg_W_MEM_reset_dup : STD_LOGIC;
 	SIGNAL reg_W_ALU_reset_dup : STD_LOGIC;
 	SIGNAL reg_W_MUL_reset_dup : STD_LOGIC;
@@ -1321,7 +1326,8 @@ BEGIN
 		reg_D_A_we => reg_D_A_we,
 		reg_A_C_we => reg_A_C_we,
 		rob_count => rob_count_DU,
-		rob_rollback => rob_rollback_DU
+		rob_rollback => rob_rollback_DU,
+        cache_block => cache_block
 	);
 
 	BP : bypass_unit PORT MAP(
@@ -1389,6 +1395,7 @@ BEGIN
 	);
 
 	reg_F_D_reset <= reg_F_D_reset_DU OR exc_F_E OR error_detected;
+    reg_F_D_reset_status <= reg_F_D_reset_DU OR error_detected;
 
 	reg_F_D: reg_FD PORT MAP(
 		clk => clk,
@@ -1402,7 +1409,7 @@ BEGIN
 
 	reg_status_F_D: reg_status PORT MAP(
 		clk => clk,
-		reset => reg_F_D_reset_DU,
+		reset => reg_F_D_reset_status,
 		we => reg_F_D_we,
 		pc_in => pc_F,
 		priv_status_in => priv_status_F,
@@ -1509,6 +1516,7 @@ BEGIN
 	);
 
 	reg_D_A_reset <= reg_D_A_reset_DU OR exc_D_E OR error_detected;
+    reg_D_A_reset_status <= reg_D_A_reset_DU or error_detected;
 
 	reg_D_A: reg_DA PORT MAP(
 		clk => clk,
@@ -1556,7 +1564,7 @@ BEGIN
 
 	reg_status_D_A: reg_status PORT MAP(
 		clk => clk,
-		reset => reg_D_A_reset_DU,
+		reset => reg_D_A_reset_status,
 		we => reg_D_A_we,
 		pc_in => pc_D,
 		priv_status_in => priv_status_D,
@@ -1618,6 +1626,7 @@ BEGIN
 	);
 
 	reg_A_C_reset <= reg_A_C_reset_DU OR exc_A_E OR error_detected;
+    reg_A_C_reset_status <= reg_A_C_reset_DU or error_detected;
 
 	reg_A_C : reg_AC PORT MAP(
 		clk => clk,
@@ -1641,7 +1650,7 @@ BEGIN
 
 	reg_status_A_C: reg_status PORT MAP(
 		clk => clk,
-		reset => reg_A_C_reset_DU,
+		reset => reg_A_C_reset_status,
 		we => reg_A_C_we,
 		pc_in => pc_A,
 		priv_status_in => priv_status_A,
@@ -1941,8 +1950,10 @@ BEGIN
 	debug_dump_ROB <= '0';
 	pc_out <= pc_ROB;
 
-	reg_we_ROB_validated <= reg_we_ROB AND NOT error_detected;
-	exc_ROB_validated <= exc_ROB AND NOT error_detected;
+	--reg_we_ROB_validated <= reg_we_ROB AND NOT error_detected;
+    reg_we_ROB_validated <= reg_we_ROB AND (new_recovery_pc OR NOT error_detected);
+	--exc_ROB_validated <= exc_ROB AND NOT error_detected;
+    exc_ROB_validated <= exc_ROB AND (new_recovery_pc OR NOT error_detected);
 
 
     -- Secondary redundant pipeline --
@@ -2017,7 +2028,8 @@ BEGIN
 		reg_D_A_we => reg_D_A_we_ghost,
 		reg_A_C_we => reg_A_C_we_dup,
 		rob_count => rob_count_DU_dup,
-		rob_rollback => rob_rollback_DU_dup
+		rob_rollback => rob_rollback_DU_dup,
+        cache_block => cache_block_dup
 	);
 
 	BP_dup : bypass_unit PORT MAP(
@@ -2120,6 +2132,7 @@ BEGIN
 	);
 
 	reg_A_C_reset_dup <= reg_A_C_reset_DU_dup OR exc_A_E OR error_detected;
+    reg_A_C_reset_status_dup <= reg_A_C_reset_DU_dup OR error_detected;
 
 
 	reg_A_C_dup : reg_AC PORT MAP(
@@ -2145,7 +2158,7 @@ BEGIN
 
 	reg_status_A_C_dup: reg_status PORT MAP(
 		clk => clk,
-		reset => reg_A_C_reset_DU_dup,
+		reset => reg_A_C_reset_status_dup,
 		we => reg_A_C_we_dup,
 		pc_in => pc_A_dup,
 		priv_status_in => priv_status_A_dup,
@@ -2389,7 +2402,7 @@ BEGIN
 		sb_store_commit => sb_store_commit_C_dup,
 		sb_squash => sb_squash_C_dup,
 		sb_error_detected => error_detected,
-        cache_block => cache_block_ghost
+        cache_block => cache_block_dup
 	);
 
 	reg_W_MEM_reset_dup <= reset OR to_std_logic(inst_type_C_dup /= INST_TYPE_MEM) OR NOT done_C_dup OR error_detected;

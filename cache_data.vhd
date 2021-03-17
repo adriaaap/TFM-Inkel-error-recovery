@@ -91,6 +91,8 @@ ARCHITECTURE cache_data_behavior OF cache_data IS
 	SIGNAL sb_byte_num : INTEGER RANGE 0 TO 15 := 0;
 	SIGNAL sb_byte_msb : INTEGER RANGE 0 TO 127 := 7;
 	SIGNAL sb_byte_lsb : INTEGER RANGE 0 TO 127 := 0;
+    
+    SIGNAL internal_clk : STD_LOGIC := '0';
 
 	-- Procedure to reset and initialize the cache
 	PROCEDURE reset_cache(
@@ -127,7 +129,7 @@ ARCHITECTURE cache_data_behavior OF cache_data IS
 	END PROCEDURE;
 BEGIN
 
--- Process that represents the internal register
+-- Process that represents the internal register. Executing the next state process right at the start of a cycle has weird collisions with the error detection, displacing it by a few ps circumvents the issue
 internal_register : PROCESS(clk, reset)
 BEGIN
 	IF rising_edge(clk) THEN
@@ -139,24 +141,46 @@ BEGIN
 	END IF;
 END PROCESS internal_register;
 
+
+-- Process that represents the internal clock
+internal_clock : PROCESS
+BEGIN
+	wait for 5 ps;
+	internal_clk <= '1';
+	wait for 995 ps;
+	internal_clk <= '0';
+END PROCESS internal_clock;
+
 -- Process that computes the next state of the cache
-next_state_process : PROCESS(reset, state_i, re, we, mem_done, sb_done, hit_i, repl_dirty_i, invalid_access_i)
+next_state_process : PROCESS(reset, state_i, re, we, mem_done, sb_done, hit_i, repl_dirty_i, invalid_access_i, error_detected, internal_clk)
 BEGIN
 	IF reset = '1' THEN
 		state_nx_i <= READY;
-	ELSE
+	ELSIF rising_edge(internal_clk) THEN
 		state_nx_i <= state_i;
 		IF state_i = READY THEN
 			IF (re = '1' OR we = '1') AND invalid_access_i = '0' THEN
 				IF sb_done = '0' THEN
-					state_nx_i <= WAITSB;
+                    IF error_detected = '1' THEN
+                        state_nx_i <= WAITSB_BLOCKER;
+                    ELSE
+                        state_nx_i <= WAITSB;
+                    END IF;
 				ELSE
 					IF hit_i = '1' THEN
 						state_nx_i <= READY;
 					ELSIF repl_dirty_i = '1' THEN
-						state_nx_i <= LINEREPL;
+                        IF error_detected = '1' THEN
+                            state_nx_i <= LINEREPL_BLOCKER;
+                        ELSE
+                            state_nx_i <= LINEREPL;
+                        END IF;
 					ELSE
-						state_nx_i <= LINEREQ;
+                        IF error_detected = '1' THEN
+                            state_nx_i <= ERROR;
+						ELSE 
+                            state_nx_i <= LINEREQ;
+                        END IF;
 					END IF;
 				END IF;
 			END IF;
@@ -165,21 +189,57 @@ BEGIN
 				IF hit_i = '1' THEN
 					state_nx_i <= READY;
 				ELSIF repl_dirty_i = '1' THEN
-					state_nx_i <= LINEREPL;
+					IF error_detected = '1' THEN
+                        state_nx_i <= LINEREPL_BLOCKER;
+                    ELSE
+                        state_nx_i <= LINEREPL;
+                    END IF;
 				ELSE
-					state_nx_i <= LINEREQ;
+					IF error_detected = '1' THEN
+                        state_nx_i <= ERROR;
+                    ELSE 
+                        state_nx_i <= LINEREQ;
+                    END IF;
 				END IF;
-			END IF;
+			ELSIF error_detected = '1' THEN
+                state_nx_i <= WAITSB_BLOCKER;
+            END IF;
 
+		ELSIF state_i = WAITSB_BLOCKER THEN
+			IF sb_done = '1' THEN
+				IF hit_i = '1' THEN
+					state_nx_i <= READY;
+				ELSIF repl_dirty_i = '1' THEN
+					state_nx_i <= LINEREPL_BLOCKER;
+				ELSE
+                    state_nx_i <= ERROR;
+				END IF;
+            END IF;
+            
 		ELSIF state_i = LINEREPL THEN
+            IF error_detected = '1' THEN
+                IF mem_done = '1' THEN
+                    state_nx_i <= ERROR;
+                ELSE
+                    state_nx_i <= LINEREPL_BLOCKER;
+                END IF;
+			ELSIF mem_done = '1' THEN
+                state_nx_i <= LINEREQ;
+			END IF;
+            
+        ELSIF state_i = LINEREPL_BLOCKER THEN
 			IF mem_done = '1' THEN
-				state_nx_i <= LINEREQ;
+                state_nx_i <= ERROR;
 			END IF;
 
 		ELSIF state_i = LINEREQ THEN
 			IF mem_done = '1' THEN
 				state_nx_i <= READY;
+            ELSIF error_detected = '1' THEN
+                state_nx_i <= ERROR;
 			END IF;
+        ELSIF state_i = ERROR THEN
+            state_nx_i <= READY;
 		END IF;
 	END IF;
 END PROCESS next_state_process;
@@ -192,11 +252,16 @@ BEGIN
 
 	ELSIF falling_edge(clk) AND reset = '0' THEN
 		IF state_i = READY OR state_i = WAITSB THEN
+            IF state_nx_i = WAITSB_BLOCKER OR state_nx_i = LINEREPL_BLOCKER THEN
+                cache_block <= '1';
+            ELSE
+                cache_block <= '0';
+            END IF;
 			IF state_nx_i = READY THEN
 				IF re = '1' OR we = '1' THEN
 					LRU_execute(lru_fields, hit_line_num_i);
 				END IF;
-			ELSIF state_nx_i = LINEREPL THEN
+			ELSIF state_nx_i = LINEREPL OR state_nx_i = LINEREPL_BLOCKER THEN
 				mem_req <= '1';
 				mem_we <= '1';
 				mem_addr <= tag_fields(lru_line_num_i) & "0000";
@@ -205,11 +270,35 @@ BEGIN
 				mem_we <= '0';
 				mem_addr <= addr;
 			END IF;
+        ELSIF state_i = WAITSB_BLOCKER THEN
+            cache_block <= '1';
+			IF state_nx_i = READY AND THEN
+				IF re = '1' OR we = '1' THEN
+					LRU_execute(lru_fields, hit_line_num_i);
+				END IF;
+			ELSIF state_nx_i = LINEREPL_BLOCKER THEN
+				mem_req <= '1';
+				mem_we <= '1';
+				mem_addr <= tag_fields(lru_line_num_i) & "0000";
+			END IF;
 		ELSIF state_i = LINEREPL THEN
 			IF state_nx_i = LINEREQ THEN
+                cache_block <= '0';
 				mem_req <= '1';
 				mem_we <= '0';
 				mem_addr <= addr;
+            ELSIF state_nx_i = LINEREPL_BLOCKER THEN
+                cache_block <= '1';
+            ELSIF state_nx_i = ERROR THEN
+                cache_block <= '0';
+                mem_req <= '0';
+			END IF;
+        ELSIF state_i = LINEREPL_BLOCKER THEN           
+            IF state_nx_i = ERROR THEN
+                mem_req <= '0';
+                cache_block <= '0';
+            ELSE
+                cache_block <= '1';
 			END IF;
 		ELSIF state_i = LINEREQ THEN
 			IF state_nx_i = READY THEN
@@ -219,6 +308,8 @@ BEGIN
 				tag_fields(lru_line_num_i) <= addr(31 DOWNTO 4);
 				data_fields(lru_line_num_i) <= mem_data_in;
 				LRU_execute(lru_fields, lru_line_num_i);
+            ELSIF state_nx_i = ERROR THEN
+                mem_req <= '0';
 			END IF;
 		END IF;
 
