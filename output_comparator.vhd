@@ -12,6 +12,7 @@ entity output_comparator is
 		exc_data_1 	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 		pc_1       	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 		valid_1		: IN STD_LOGIC;
+        sb_store_commit_1 : IN STD_LOGIC;
 		-- Dup rob input
 		reg_v_2    	: IN STD_LOGIC;
 		reg_2      	: IN STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -21,6 +22,7 @@ entity output_comparator is
 		exc_data_2 	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 		pc_2       	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 		valid_2		: IN STD_LOGIC;
+        sb_store_commit_2 : IN STD_LOGIC;
 		
 		-- ALU 1 input
 		jump_addr_A_1 	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -74,7 +76,10 @@ entity output_comparator is
 		exc_data_D_E_2 	: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 	
 		-- Output
-		error_detected 	: OUT STD_LOGIC
+		error_detected 	: OUT STD_LOGIC;
+        ROB_error_out : OUT STD_LOGIC;
+        is_store    : OUT STD_LOGIC
+        --commit_verified : OUT STD_LOGIC
 
 	);
 end output_comparator;
@@ -89,6 +94,7 @@ architecture structure of output_comparator is
 	SIGNAL exc_data_equal 		: STD_LOGIC;
 	SIGNAL pc_equal 		: STD_LOGIC;
 	SIGNAL valid_equal		: STD_LOGIC;
+    SIGNAL sb_store_commit_equal : STD_LOGIC;
 	SIGNAL ROB_equal		: STD_LOGIC;
 	SIGNAL ROB_error		: STD_LOGIC;
     SIGNAL MEM_error        : STD_LOGIC;
@@ -124,12 +130,16 @@ begin
 	exc_data_equal <= '1' when exc_data_1 = exc_data_2 else '0';
 	pc_equal <= '1' when pc_1 = pc_2 else '0';
 	valid_equal <= '1' when valid_1 = valid_2 else '0';
+    sb_store_commit_equal <= '1' when sb_store_commit_1 = sb_store_commit_2 else '0';
 
 
     -- Only check for equal ROB result if the output intends to be valid
-	ROB_equal <= reg_v_equal AND reg_equal AND reg_data_equal AND exc_equal AND exc_code_equal AND exc_data_equal AND pc_equal;
+	ROB_equal <= reg_v_equal AND reg_equal AND reg_data_equal AND exc_equal AND exc_code_equal AND exc_data_equal AND pc_equal AND sb_store_commit_equal;
 
-	ROB_error <= NOT valid_equal OR (valid_equal AND NOT ROB_equal);
+	ROB_error <= NOT valid_equal OR (valid_equal AND valid_1 AND NOT ROB_equal);
+    ROB_error_out <= ROB_error;
+    
+    --commit_verified <= NOT ROB_error AND mem_we_C_equal;
 
 	-- ALU comparison
 
@@ -146,9 +156,11 @@ begin
     -- Only check for equal MEM values if a request is intended by both pipelines
     
     MEM_error <= NOT mem_req_C_equal -- Error if only one pipeline has a request
-                OR (mem_req_C_equal AND (mem_we_C_equal AND mem_we_C_1) AND NOT (mem_addr_C_equal AND mem_data_out_C_equal)) -- Error if both pipelines request a store with different data/addr
-                OR (mem_req_C_equal AND (mem_we_C_equal AND NOT mem_we_C_1) AND NOT mem_addr_C_equal) -- Error if both pipelines request a load with different addr
-                OR (mem_req_C_equal AND NOT mem_we_C_equal); -- Error if one pipeline request a store and the other a load
+                OR (mem_req_C_equal AND mem_req_C_1 AND (mem_we_C_equal AND mem_we_C_1) AND NOT (mem_addr_C_equal AND mem_data_out_C_equal)) -- Error if both pipelines request a store with different data/addr
+                OR (mem_req_C_equal AND mem_req_C_1 AND (mem_we_C_equal AND NOT mem_we_C_1) AND NOT mem_addr_C_equal) -- Error if both pipelines request a load with different addr
+                OR (mem_req_C_equal AND mem_req_C_1 AND NOT mem_we_C_equal); -- Error if one pipeline request a store and the other a load
+
+    is_store <= sb_store_commit_1 OR sb_store_commit_2;
 
 	-- Segmentation regs comparison
 

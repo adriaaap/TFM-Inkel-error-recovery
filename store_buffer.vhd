@@ -28,6 +28,7 @@ ENTITY store_buffer IS
 		store_commit   : IN  STD_LOGIC;
 		squash         : IN  STD_LOGIC;
 		error_detected : IN  STD_LOGIC
+        --commit_verified      : IN STD_LOGIC
 	);
 END store_buffer;
 
@@ -142,7 +143,9 @@ BEGIN
 			head := head_i;
 			size := size_i;
 
-			IF store_commit = '1' THEN
+            -- Commit instruction when ROB sends store_commit, unless the instruction had an error when exiting the ROB
+			--IF store_commit = '1' AND commit_verified = '1' THEN
+            IF store_commit = '1' THEN
 				valid_fields(head) <= '0';
 				head := (head + 1) MOD SB_ENTRIES;
 				size := size - 1;
@@ -198,7 +201,8 @@ commit_entry_num_i <= 0 WHEN id_fields(0) = store_id AND valid_fields(0) = '1'
 		ELSE 0;
 
 -- Logic to commit a buffered store
-cache_we <= store_commit;
+cache_we <= store_commit AND NOT error_detected; -- Don't commit if an error has been detected, it could be
+-- caused by the instruction that just failed
 cache_addr <= addr_fields(head_i);
 cache_is_byte <= byte_fields(head_i);
 cache_data <= data_fields(head_i);

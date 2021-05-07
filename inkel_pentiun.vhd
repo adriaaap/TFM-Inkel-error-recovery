@@ -91,7 +91,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			error_detected : IN STD_LOGIC;
 			recovery_pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			new_recovery_pc : IN STD_LOGIC;
-			branch_was_taken : IN STD_LOGIC
+			branch_was_taken : IN STD_LOGIC;
+            is_store : IN STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -147,6 +148,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			sb_squash       : IN  STD_LOGIC;
 			sb_error_detected : IN  STD_LOGIC;
             cache_block     : OUT STD_LOGIC
+            --sb_commit_verified    : IN STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -527,6 +529,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			exc_data_1 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			pc_1 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			valid_1	: IN STD_LOGIC;
+            sb_store_commit_1 : IN STD_LOGIC;
 			-- Dup rob input
 			reg_v_2 : IN STD_LOGIC;
 			reg_2 : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -536,6 +539,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			exc_data_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			pc_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			valid_2 : IN STD_LOGIC;
+            sb_store_commit_2 : IN STD_LOGIC;
 			-- ALU 1 input
 			jump_addr_A_1 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			branch_taken_A_1 : IN STD_LOGIC;
@@ -583,7 +587,10 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			exc_data_F_E_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			exc_data_D_E_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			-- Output
-			error_detected : OUT STD_LOGIC
+			error_detected : OUT STD_LOGIC;
+            ROB_error_out : OUT STD_LOGIC;
+            is_store : OUT STD_LOGIC
+            --commit_verified : OUT STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -1133,6 +1140,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL reset_PC_ghost : STD_LOGIC;
 	SIGNAL rob_count_DU_dup : STD_LOGIC;
 	SIGNAL rob_rollback_DU_dup : STD_LOGIC;
+    SIGNAL rob_idx_F_dup : STD_LOGIC_VECTOR(3 DOWNTO 0);
 
 	-- Bypass unit signals
 	SIGNAL mux_src1_D_BP_ctrl_dup : STD_LOGIC_VECTOR(2 DOWNTO 0);
@@ -1164,6 +1172,9 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL exc_data_C_E_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
 	SIGNAL error_detected : STD_LOGIC;
+    SIGNAL ROB_error : STD_LOGIC;
+    SIGNAL is_store : STD_LOGIC;
+    --SIGNAL commit_verified : STD_LOGIC;
 
     -- END 2nd pipeline signals
 
@@ -1367,7 +1378,8 @@ BEGIN
 		error_detected => error_detected,
 		recovery_pc => pc_ROB,
 		new_recovery_pc => new_recovery_pc,
-		branch_was_taken => branch_was_taken
+		branch_was_taken => branch_was_taken,
+        is_store => is_store
 	);
 
 	priv_status : reg_priv_status PORT MAP(
@@ -1829,6 +1841,7 @@ BEGIN
 		sb_squash => sb_squash_C,
 		sb_error_detected => error_detected,
         cache_block => cache_block
+        --sb_commit_verified => commit_verified
 	);
 
 	reg_W_MEM_reset <= reset OR to_std_logic(inst_type_C /= INST_TYPE_MEM) OR NOT done_C OR error_detected;
@@ -1951,9 +1964,11 @@ BEGIN
 	pc_out <= pc_ROB;
 
 	--reg_we_ROB_validated <= reg_we_ROB AND NOT error_detected;
-    reg_we_ROB_validated <= reg_we_ROB AND (new_recovery_pc OR NOT error_detected);
+    --reg_we_ROB_validated <= reg_we_ROB AND (new_recovery_pc OR NOT error_detected);
+    reg_we_ROB_validated <= reg_we_ROB AND NOT ROB_error;
 	--exc_ROB_validated <= exc_ROB AND NOT error_detected;
-    exc_ROB_validated <= exc_ROB AND (new_recovery_pc OR NOT error_detected);
+    --exc_ROB_validated <= exc_ROB AND (new_recovery_pc OR NOT error_detected);
+    exc_ROB_validated <= exc_ROB AND NOT ROB_error;
 
 
     -- Secondary redundant pipeline --
@@ -2403,6 +2418,7 @@ BEGIN
 		sb_squash => sb_squash_C_dup,
 		sb_error_detected => error_detected,
         cache_block => cache_block_dup
+        --sb_commit_verified => commit_verified
 	);
 
 	reg_W_MEM_reset_dup <= reset OR to_std_logic(inst_type_C_dup /= INST_TYPE_MEM) OR NOT done_C_dup OR error_detected;
@@ -2515,7 +2531,7 @@ BEGIN
 		-- Counter
 		tail_we => rob_count_DU_dup,
 		rollback_tail => rob_rollback_DU_dup,
-		tail_out => rob_idx_F,
+		tail_out => rob_idx_F_dup,
 		-- Bypasses
 		reg_src1_D_BP => reg_src1_D,
 		reg_src1_D_v_BP => reg_src1_v_D,
@@ -2549,6 +2565,7 @@ BEGIN
 		exc_data_1 => exc_data_ROB,
 		pc_1 => pc_ROB,
 		valid_1 => valid_ROB,
+        sb_store_commit_1 => sb_store_commit_C,
 		-- Rob 2 input
 		reg_v_2 => reg_we_ROB_ghost,
 		reg_2 => reg_dest_ROB_ghost,
@@ -2558,6 +2575,7 @@ BEGIN
 		exc_data_2 => exc_data_ROB_ghost,
 		pc_2 => pc_ROB_ghost,
 		valid_2 => valid_ROB_ghost,
+        sb_store_commit_2 => sb_store_commit_C_dup,
 		-- ALU 1 input
 		jump_addr_A_1 => jump_addr_A,
 		branch_taken_A_1 => branch_taken_A,
@@ -2605,7 +2623,10 @@ BEGIN
 		exc_data_F_E_2 => exc_data_F_E_ghost,
 		exc_data_D_E_2 => exc_data_D_E_ghost,
 		-- Output
-		error_detected => error_detected
+		error_detected => error_detected,
+        ROB_error_out => ROB_error,
+        is_store => is_store
+        --commit_verified => commit_verified
 	);
 
 	error_gen : error_generator PORT MAP(
