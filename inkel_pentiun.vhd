@@ -120,7 +120,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			mem_req : OUT STD_LOGIC;
 			mem_addr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 			mem_done : IN STD_LOGIC;
-			mem_data_in : IN STD_LOGIC_VECTOR(127 DOWNTO 0)
+			mem_data_in : IN STD_LOGIC_VECTOR(127 DOWNTO 0);
+            error : IN STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -1405,7 +1406,8 @@ BEGIN
 		mem_req => mem_req_F,
 		mem_addr => mem_addr_F,
 		mem_done => mem_done_F,
-		mem_data_in => mem_data_in_F
+		mem_data_in => mem_data_in_F,
+        error => error_detected
 	);
 
 	reg_F_D_reset <= reg_F_D_reset_DU OR exc_F_E OR error_detected;

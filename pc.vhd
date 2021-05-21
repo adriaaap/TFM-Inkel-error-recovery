@@ -62,15 +62,14 @@ BEGIN
                 IF exception = '1' THEN
                     pc_exc <= exception_addr;
                 END IF;
-                
-
-                IF new_recovery_pc = '1' THEN
-                    latest_executed_inst <= recovery_pc;
-                    IF branch_was_taken = '1' THEN
-                        recover_next <= '0';
-                    ELSE
-                        recover_next <= '1';
-                    END IF;
+            END IF;
+            
+            IF new_recovery_pc = '1' AND rob_error = '0' THEN
+                latest_executed_inst <= recovery_pc;
+                IF branch_was_taken = '1' THEN
+                    recover_next <= '0';
+                ELSE
+                    recover_next <= '1';
                 END IF;
             END IF;
 

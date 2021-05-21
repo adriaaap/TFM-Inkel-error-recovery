@@ -19,7 +19,8 @@ ENTITY fetch IS
         mem_req : OUT STD_LOGIC;
         mem_addr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
         mem_done : IN STD_LOGIC;
-        mem_data_in : IN STD_LOGIC_VECTOR(127 DOWNTO 0)
+        mem_data_in : IN STD_LOGIC_VECTOR(127 DOWNTO 0);
+        error: IN STD_LOGIC
     );
 END fetch;
 
@@ -37,7 +38,8 @@ ARCHITECTURE structure OF fetch IS
 			mem_addr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 	        mem_req_abort : IN STD_LOGIC;
 			mem_done : IN STD_LOGIC;
-			mem_data_in : IN STD_LOGIC_VECTOR(127 DOWNTO 0)
+			mem_data_in : IN STD_LOGIC_VECTOR(127 DOWNTO 0);
+            error : IN STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -72,7 +74,8 @@ BEGIN
         mem_req_abort => branch_taken,
         mem_addr => mem_addr,
         mem_done => mem_done,
-        mem_data_in => mem_data_in
+        mem_data_in => mem_data_in,
+        error => error
     );
 
     inst <= cache_data_out;
