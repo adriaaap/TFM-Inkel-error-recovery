@@ -28,7 +28,6 @@ ARCHITECTURE structure OF pc IS
     SIGNAL pc_int : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL pc_next : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL pc_exc : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL pc_err : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL latest_executed_inst : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL recover_next : STD_LOGIC;
 BEGIN
@@ -38,7 +37,6 @@ BEGIN
             IF reset = '1' THEN
                 pc_int <= addr_boot;
                 pc_exc <= addr_boot;
-                pc_err <= addr_boot;
 
             ELSIF error_detected = '1' THEN
             -- pc_int <= recovery_pc; -- does not work if the error occurs out of the ROB commit phase
@@ -48,14 +46,14 @@ BEGIN
                     -- Also reexecute it if it is a STORE, because STOREs are not commited to the SB if
                     -- there is an error in the same cycle.
                     IF branch_was_taken = '1' OR is_store = '1' THEN
-                        pc_err <= recovery_pc;
+                        pc_int <= recovery_pc;
                     ELSE
-                        pc_err <= recovery_pc + 4;
+                        pc_int <= recovery_pc + 4;
                     END IF;
                 ELSIF recover_next = '1' THEN
-                    pc_err <= latest_executed_inst + 4;
+                    pc_int <= latest_executed_inst + 4;
                 ELSE
-                    pc_err <= latest_executed_inst;
+                    pc_int <= latest_executed_inst;
                 END IF;
             ELSE
                 pc_int <= pc_next;
@@ -79,8 +77,7 @@ BEGIN
     END PROCESS p;
 
     -- When iret = 1, branch_taken is also 1
-    pc_next <= pc_err WHEN error_detected = '1'
-                ELSE addr_sys WHEN exception = '1'
+    pc_next <= addr_sys WHEN exception = '1'
                 ELSE pc_exc WHEN iret = '1'
                 ELSE addr_jump WHEN branch_taken = '1'
                 ELSE pc_int + 4 WHEN load_PC = '1'
