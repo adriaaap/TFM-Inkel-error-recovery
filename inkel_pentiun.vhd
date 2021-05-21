@@ -92,7 +92,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			recovery_pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			new_recovery_pc : IN STD_LOGIC;
 			branch_was_taken : IN STD_LOGIC;
-            is_store : IN STD_LOGIC
+            is_store : IN STD_LOGIC;
+            rob_error : IN STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -1379,7 +1380,8 @@ BEGIN
 		recovery_pc => pc_ROB,
 		new_recovery_pc => new_recovery_pc,
 		branch_was_taken => branch_was_taken,
-        is_store => is_store
+        is_store => is_store,
+        rob_error => ROB_error
 	);
 
 	priv_status : reg_priv_status PORT MAP(

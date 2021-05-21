@@ -17,7 +17,8 @@ ENTITY pc IS
 	recovery_pc : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 	new_recovery_pc : IN STD_LOGIC;
 	branch_was_taken : IN STD_LOGIC;
-    is_store: IN STD_LOGIC
+    is_store: IN STD_LOGIC;
+    rob_error: IN STD_LOGIC
     );
 END pc;
 
@@ -41,7 +42,7 @@ BEGIN
             ELSIF error_detected = '1' THEN
             -- pc_int <= recovery_pc; -- does not work if the error occurs out of the ROB commit phase
             --pc_int <= latest_executed_inst + 4; -- does not work if the latest instruction was a jump that succeeded
-                IF new_recovery_pc = '1' THEN
+                IF new_recovery_pc = '1' AND rob_error = '0' THEN
                     -- If the instruction being executed is a jump, reexecute it. 
                     -- Also reexecute it if it is a STORE, because STOREs are not commited to the SB if
                     -- there is an error in the same cycle.
