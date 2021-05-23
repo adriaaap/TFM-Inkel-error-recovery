@@ -41,6 +41,16 @@ entity output_comparator is
 		mem_we_C_2 		: IN STD_LOGIC;
 		mem_addr_C_2 		: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 		mem_data_out_C_2 	: IN STD_LOGIC_VECTOR(127 DOWNTO 0);
+        
+        -- Store buffer 1 input
+        sb_addr_1           : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        sb_data_in_1        : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        sb_byte_1           : IN STD_LOGIC;
+
+        -- Store buffer 2 input
+        sb_addr_2           : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        sb_data_in_2        : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        sb_byte_2           : IN STD_LOGIC;
 
 		-- Segmentation regs 1 input
 		reg_F_D_reset_DU_1	: IN STD_LOGIC;
@@ -78,6 +88,7 @@ entity output_comparator is
 		-- Output
 		error_detected 	: OUT STD_LOGIC;
         ROB_error_out : OUT STD_LOGIC;
+        MEM_error_out : OUT STD_LOGIC;
         is_store    : OUT STD_LOGIC
         --commit_verified : OUT STD_LOGIC
 
@@ -104,6 +115,7 @@ architecture structure of output_comparator is
 	SIGNAL mem_we_C_equal 		: STD_LOGIC;
 	SIGNAL mem_addr_C_equal 	: STD_LOGIC;
 	SIGNAL mem_data_out_C_equal 	: STD_LOGIC;
+    SIGNAL sb_equal                 : STD_LOGIC;
 	SIGNAL reg_F_D_reset_DU_equal 	: STD_LOGIC;
 	SIGNAL reg_D_A_reset_DU_equal 	: STD_LOGIC;
 	SIGNAL reg_F_D_we_equal 	: STD_LOGIC;
@@ -160,7 +172,11 @@ begin
                 OR (mem_req_C_equal AND mem_req_C_1 AND (mem_we_C_equal AND NOT mem_we_C_1) AND NOT mem_addr_C_equal) -- Error if both pipelines request a load with different addr
                 OR (mem_req_C_equal AND mem_req_C_1 AND NOT mem_we_C_equal); -- Error if one pipeline request a store and the other a load
 
+    MEM_error_out <= MEM_error;
     is_store <= sb_store_commit_1 OR sb_store_commit_2;
+    
+    -- Store buffer comparison
+    sb_equal <= '1' when (sb_addr_1 = sb_addr_2) AND (sb_data_in_1 = sb_data_in_2) AND (sb_byte_1 = sb_byte_2) else '0';
 
 	-- Segmentation regs comparison
 
@@ -184,7 +200,7 @@ begin
 	exc_data_D_E_equal <= '1' when exc_data_D_E_1 = exc_data_D_E_2 else '0'; 	
 
 	-- Check if all tested signals are equal. If one is different, we have detected an error.
-	error_detected <= ROB_error OR MEM_error OR NOT ( jump_addr_A_equal AND branch_taken_A_equal 
+	error_detected <= ROB_error OR MEM_error OR NOT ( jump_addr_A_equal AND branch_taken_A_equal AND sb_equal
 				AND reg_F_D_reset_DU_equal AND reg_D_A_reset_DU_equal AND reg_F_D_we_equal AND reg_D_A_we_equal
 				AND load_PC_equal AND reset_PC_equal AND exc_F_E_equal AND exc_D_E_equal AND exc_code_F_E_equal
 				AND exc_code_D_E_equal AND exc_data_F_E_equal AND exc_data_D_E_equal

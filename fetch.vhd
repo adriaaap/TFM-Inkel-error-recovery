@@ -39,7 +39,7 @@ ARCHITECTURE structure OF fetch IS
 	        mem_req_abort : IN STD_LOGIC;
 			mem_done : IN STD_LOGIC;
 			mem_data_in : IN STD_LOGIC_VECTOR(127 DOWNTO 0);
-            error : IN STD_LOGIC
+            error_detected : IN STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -75,7 +75,7 @@ BEGIN
         mem_addr => mem_addr,
         mem_done => mem_done,
         mem_data_in => mem_data_in,
-        error => error
+        error_detected => error
     );
 
     inst <= cache_data_out;

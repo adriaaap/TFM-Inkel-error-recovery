@@ -27,6 +27,7 @@ ENTITY cache_stage IS
 		sb_store_commit : IN  STD_LOGIC;
 		sb_squash       : IN  STD_LOGIC;
 		sb_error_detected : IN  STD_LOGIC;
+        mem_error_detected : IN STD_LOGIC;
         cache_block     : OUT STD_LOGIC
         --sb_commit_verified    : IN STD_LOGIC
 	);
@@ -59,6 +60,7 @@ ARCHITECTURE cache_stage_behavior OF cache_stage IS
 			sb_is_byte     : IN  STD_LOGIC;
 			sb_data_in     : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
             error_detected : IN  STD_LOGIC;
+            mem_error_detected : IN STD_LOGIC;
             cache_block    : OUT STD_LOGIC
 		);
 	END COMPONENT;
@@ -136,6 +138,7 @@ BEGIN
 		sb_is_byte => sb_cache_is_byte,
 		sb_data_in => sb_cache_data,
         error_detected => sb_error_detected,
+        mem_error_detected => mem_error_detected,
         cache_block => cache_block
 	);
 

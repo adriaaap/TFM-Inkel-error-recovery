@@ -6,7 +6,7 @@ PACKAGE utils IS
 	FUNCTION to_std_logic(value : BOOLEAN) RETURN std_logic;
 
 	TYPE data_cache_state_t IS (READY, WAITSB, LINEREQ, LINEREPL, WAITSB_BLOCKER, LINEREPL_BLOCKER, ERROR);
-	TYPE inst_cache_state_t IS (READY, LINEREQ);
+	TYPE inst_cache_state_t IS (ERROR, READY, LINEREQ);
 	TYPE store_buffer_state_t IS (READY, FLUSHING, FLUSHED);
 
 	CONSTANT REG_EXC_CODE : STD_LOGIC_VECTOR := x"1E";

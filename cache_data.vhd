@@ -31,6 +31,7 @@ ENTITY cache_data IS
 		sb_is_byte     : IN  STD_LOGIC;
 		sb_data_in     : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
         error_detected : IN  STD_LOGIC;
+        mem_error_detected : IN STD_LOGIC;
         cache_block    : OUT STD_LOGIC
 	);
 END cache_data;
@@ -161,7 +162,9 @@ BEGIN
 		IF state_i = READY THEN
 			IF (re = '1' OR we = '1') AND invalid_access_i = '0' THEN
 				IF sb_done = '0' THEN
-                    IF error_detected = '1' THEN
+                    IF mem_error_detected = '1' THEN
+                        state_nx_i <= ERROR;
+                    ELSIF error_detected = '1' THEN
                         state_nx_i <= WAITSB_BLOCKER;
                     ELSE
                         state_nx_i <= WAITSB;
@@ -170,13 +173,15 @@ BEGIN
 					IF hit_i = '1' THEN
 						state_nx_i <= READY;
 					ELSIF repl_dirty_i = '1' THEN
-                        IF error_detected = '1' THEN
+                        IF mem_error_detected = '1' THEN
+                            state_nx_i <= ERROR;
+                        ELSIF error_detected = '1' THEN
                             state_nx_i <= LINEREPL_BLOCKER;
                         ELSE
                             state_nx_i <= LINEREPL;
                         END IF;
 					ELSE
-                        IF error_detected = '1' THEN
+                        IF error_detected = '1' OR mem_error_detected = '1' THEN
                             state_nx_i <= ERROR;
 						ELSE 
                             state_nx_i <= LINEREQ;
@@ -189,18 +194,22 @@ BEGIN
 				IF hit_i = '1' THEN
 					state_nx_i <= READY;
 				ELSIF repl_dirty_i = '1' THEN
-					IF error_detected = '1' THEN
+                    IF mem_error_detected = '1' THEN
+                        state_nx_i <= ERROR;
+					ELSIF error_detected = '1' THEN
                         state_nx_i <= LINEREPL_BLOCKER;
                     ELSE
                         state_nx_i <= LINEREPL;
                     END IF;
 				ELSE
-					IF error_detected = '1' THEN
+					IF error_detected = '1' OR mem_error_detected = '1' THEN
                         state_nx_i <= ERROR;
                     ELSE 
                         state_nx_i <= LINEREQ;
                     END IF;
 				END IF;
+            ELSIF mem_error_detected = '1' THEN
+                state_nx_i <= ERROR;
 			ELSIF error_detected = '1' THEN
                 state_nx_i <= WAITSB_BLOCKER;
             END IF;
@@ -209,6 +218,8 @@ BEGIN
 			IF sb_done = '1' THEN
 				IF hit_i = '1' THEN
 					state_nx_i <= READY;
+                ELSIF mem_error_detected = '1' THEN
+                    state_nx_i <= ERROR;
 				ELSIF repl_dirty_i = '1' THEN
 					state_nx_i <= LINEREPL_BLOCKER;
 				ELSE
@@ -217,7 +228,9 @@ BEGIN
             END IF;
             
 		ELSIF state_i = LINEREPL THEN
-            IF error_detected = '1' THEN
+            IF mem_error_detected = '1' THEN
+                state_nx_i <= ERROR;
+            ELSIF error_detected = '1' THEN
                 IF mem_done = '1' THEN
                     state_nx_i <= ERROR;
                 ELSE
@@ -228,14 +241,14 @@ BEGIN
 			END IF;
             
         ELSIF state_i = LINEREPL_BLOCKER THEN
-			IF mem_done = '1' THEN
+			IF mem_done = '1' OR mem_error_detected = '1' THEN
                 state_nx_i <= ERROR;
 			END IF;
 
 		ELSIF state_i = LINEREQ THEN
 			IF mem_done = '1' THEN
 				state_nx_i <= READY;
-            ELSIF error_detected = '1' THEN
+            ELSIF error_detected = '1' OR mem_error_detected = '1' THEN
                 state_nx_i <= ERROR;
 			END IF;
         ELSIF state_i = ERROR THEN

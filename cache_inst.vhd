@@ -19,7 +19,7 @@ ENTITY cache_inst IS
 		mem_addr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 		mem_done : IN STD_LOGIC;
 		mem_data_in : IN STD_LOGIC_VECTOR(127 DOWNTO 0);
-        error : IN STD_LOGIC
+        error_detected : IN STD_LOGIC
 	);
 END cache_inst;
 
@@ -32,7 +32,7 @@ ARCHITECTURE structure OF cache_inst IS
 	TYPE valid_fields_t IS ARRAY(CACHE_LINES-1 DOWNTO 0) OF STD_LOGIC;
 	TYPE tag_fields_t	IS ARRAY(CACHE_LINES-1 DOWNTO 0) OF STD_LOGIC_VECTOR(TAG_BITS-1 DOWNTO 0);
 	TYPE data_fields_t	IS ARRAY(CACHE_LINES-1 DOWNTO 0) OF STD_LOGIC_VECTOR(DATA_BITS-1 DOWNTO 0);
-
+    
 	-- Fields of the cache
 	SIGNAL valid_fields	: valid_fields_t;
 	SIGNAL tag_fields	: tag_fields_t;
@@ -45,13 +45,17 @@ ARCHITECTURE structure OF cache_inst IS
 	SIGNAL invalid_access_i : STD_LOGIC;
 	SIGNAL state_nx_i : inst_cache_state_t;
 BEGIN
-	next_state_process : PROCESS(reset, state, hit_cache, addr, mem_req_abort, mem_done, mem_data_in)
+	next_state_process : PROCESS(reset, state, hit_cache, addr, mem_req_abort, mem_done, mem_data_in, error_detected)
 	BEGIN
-		IF reset = '1' OR error = '1' THEN
+		IF reset = '1' THEN
 			state_nx_i <= READY;
+        ELSIF error_detected = '1' THEN
+            state_nx_i <= ERROR;
 		ELSE
-			state_nx_i <= state;
-			IF state = READY THEN
+			
+            IF state = ERROR THEN
+                state_nx_i <= READY;
+			ELSIF state = READY THEN
 				IF hit_cache = '0' AND invalid_access_i = '0' THEN
 					state_nx_i <= LINEREQ;
 				END IF;
@@ -70,7 +74,7 @@ BEGIN
 				valid_fields(i) <= '0';
 			END LOOP;
 			mem_req <= '0';
-        ELSIF error = '1' THEN
+        ELSIF error_detected = '1' THEN
             mem_req <= '0';
 		ELSIF falling_edge(clk) AND reset = '0' THEN
 			IF state = LINEREQ AND state_nx_i = READY THEN

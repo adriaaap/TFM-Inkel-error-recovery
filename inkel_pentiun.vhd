@@ -50,7 +50,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			d_addr : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			d_data_in : IN STD_LOGIC_VECTOR(127 DOWNTO 0);
 			f_data_out : OUT STD_LOGIC_VECTOR(127 DOWNTO 0);
-			d_data_out : OUT STD_LOGIC_VECTOR(127 DOWNTO 0)
+			d_data_out : OUT STD_LOGIC_VECTOR(127 DOWNTO 0);
+            mem_error : IN STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -149,6 +150,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			sb_store_commit : IN  STD_LOGIC;
 			sb_squash       : IN  STD_LOGIC;
 			sb_error_detected : IN  STD_LOGIC;
+            mem_error_detected : IN STD_LOGIC;
             cache_block     : OUT STD_LOGIC
             --sb_commit_verified    : IN STD_LOGIC
 		);
@@ -558,6 +560,14 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			mem_we_C_2 : IN STD_LOGIC;
 			mem_addr_C_2 : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 			mem_data_out_C_2 : IN STD_LOGIC_VECTOR(127 DOWNTO 0);
+            -- Store buffer 1 input
+            sb_addr_1           : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            sb_data_in_1        : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            sb_byte_1           : IN STD_LOGIC;
+            -- Store buffer 2 input
+            sb_addr_2           : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            sb_data_in_2        : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            sb_byte_2           : IN STD_LOGIC;
 			-- Segmentation regs 1 input
 			reg_F_D_reset_DU_1 : IN STD_LOGIC;
 			reg_D_A_reset_DU_1 : IN STD_LOGIC;
@@ -591,6 +601,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			-- Output
 			error_detected : OUT STD_LOGIC;
             ROB_error_out : OUT STD_LOGIC;
+            MEM_error_out : OUT STD_LOGIC;
             is_store : OUT STD_LOGIC
             --commit_verified : OUT STD_LOGIC
 		);
@@ -1175,6 +1186,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 
 	SIGNAL error_detected : STD_LOGIC;
     SIGNAL ROB_error : STD_LOGIC;
+    SIGNAL MEM_error : STD_LOGIC;
     SIGNAL is_store : STD_LOGIC;
     --SIGNAL commit_verified : STD_LOGIC;
 
@@ -1273,7 +1285,8 @@ BEGIN
 		d_addr => mem_addr_C,
 		d_data_in => mem_data_out_C,
 		f_data_out => mem_data_in_F,
-		d_data_out => mem_data_in_C
+		d_data_out => mem_data_in_C,
+        mem_error => MEM_error
 	);
 
 	----------------------------- Control -------------------------------
@@ -1844,6 +1857,7 @@ BEGIN
 		sb_store_commit => sb_store_commit_C,
 		sb_squash => sb_squash_C,
 		sb_error_detected => error_detected,
+        mem_error_detected => MEM_error,
         cache_block => cache_block
         --sb_commit_verified => commit_verified
 	);
@@ -2421,6 +2435,7 @@ BEGIN
 		sb_store_commit => sb_store_commit_C_dup,
 		sb_squash => sb_squash_C_dup,
 		sb_error_detected => error_detected,
+        mem_error_detected => MEM_error,
         cache_block => cache_block_dup
         --sb_commit_verified => commit_verified
 	);
@@ -2596,6 +2611,14 @@ BEGIN
 		mem_we_C_2 => mem_we_C_ghost,
 		mem_addr_C_2 => mem_addr_C_ghost,
 		mem_data_out_C_2 => mem_data_out_C_ghost,
+        -- Store buffer 1 input
+        sb_addr_1 => ALU_out_C,
+        sb_data_in_1 => cache_data_in_C,
+        sb_byte_1 => byte_C,
+        -- Store buffer 2 input
+        sb_addr_2 => ALU_out_C_dup,
+        sb_data_in_2 => cache_data_in_C_dup,
+        sb_byte_2 => byte_C_dup,
 		-- Segmentation regs 1 input
 		reg_F_D_reset_DU_1 => reg_F_D_reset_DU,
 		reg_D_A_reset_DU_1 => reg_D_A_reset_DU,
@@ -2629,6 +2652,7 @@ BEGIN
 		-- Output
 		error_detected => error_detected,
         ROB_error_out => ROB_error,
+        MEM_error_out => MEM_error,
         is_store => is_store
         --commit_verified => commit_verified
 	);
