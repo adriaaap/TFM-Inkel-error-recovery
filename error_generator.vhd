@@ -84,8 +84,8 @@ END error_generator;
 ARCHITECTURE structure OF error_generator IS
 
 	-- Min and max_error_cycles bound the number of cycles until the next error.
-	CONSTANT min_error_cycles : integer := 40;
-	CONSTANT max_error_cycles : integer := 60;
+	CONSTANT min_error_cycles : integer := 25;
+	CONSTANT max_error_cycles : integer := 25;
 
 	-- Number of signals where an error can be injected
 	CONSTANT number_of_signals : integer := 60;
@@ -99,7 +99,7 @@ ARCHITECTURE structure OF error_generator IS
 BEGIN
 
 	genRandInt : PROCESS(clk)
-	    VARIABLE seed1, seed2 : integer := 42;
+	    VARIABLE seed1, seed2 : integer := 16;
 	    IMPURE FUNCTION rand_int(min_val, max_val : integer) return integer is
 		variable r : real;
 	    BEGIN
@@ -114,8 +114,9 @@ BEGIN
 		IF reset = '1' THEN
 		    error_clock <= 0;
 		    tick_number <= rand_int(min_error_cycles, max_error_cycles);
-		    --signal_number <= rand_int(0, number_of_signals-1);
-		    signal_number <= rand_int(30, 37);
+		    signal_number <= rand_int(0, number_of_signals-1);
+            --Comment the previous line and uncomment the next one to target errors on a specific set of signals (e.g., 0-18 targets ALU pipeline)
+		    --signal_number <= rand_int(0, 18);
 		    inject_error <= '0';
 		-- Before reaching the final countdown value, inject an error in the chosen signal
 		ELSIF error_clock = tick_number - 1 THEN
@@ -126,6 +127,8 @@ BEGIN
 		    error_clock <= 0;
 		    tick_number <= rand_int(min_error_cycles, max_error_cycles);
 		    signal_number <= rand_int(0, number_of_signals-1);
+            --Same comments as before to target errors
+		    --signal_number <= rand_int(0, 18);
 		    inject_error <= '0';
 		-- Increase the counter this cycle, nothing else happens
 		ELSE

@@ -150,8 +150,6 @@ begin
 
 	ROB_error <= NOT valid_equal OR (valid_equal AND valid_1 AND NOT ROB_equal);
     ROB_error_out <= ROB_error;
-    
-    --commit_verified <= NOT ROB_error AND mem_we_C_equal;
 
 	-- ALU comparison
 

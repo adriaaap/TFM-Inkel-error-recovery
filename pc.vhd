@@ -40,7 +40,7 @@ BEGIN
                 pc_exc <= addr_boot;
 
             ELSIF error_detected = '1' THEN
-            -- pc_int <= recovery_pc; -- does not work if the error occurs out of the ROB commit phase
+            --pc_int <= recovery_pc; -- does not work if the error occurs out of the ROB commit phase
             --pc_int <= latest_executed_inst + 4; -- does not work if the latest instruction was a jump that succeeded
                 IF new_recovery_pc = '1' AND rob_error = '0' THEN
                     -- If the instruction being executed is a jump, reexecute it. 

@@ -76,7 +76,7 @@ ENTITY reorder_buffer IS
 END reorder_buffer;
 
 ARCHITECTURE structure OF reorder_buffer IS
-	CONSTANT ROB_POSITIONS : INTEGER := 14;
+	CONSTANT ROB_POSITIONS : INTEGER := 16;
 
 	TYPE valid_fields_t IS ARRAY(ROB_POSITIONS - 1 DOWNTO 0) OF STD_LOGIC;
 
@@ -230,9 +230,6 @@ BEGIN
 
 				-- If an error is detected on the last instruction of the buffer, rollback the execution
 				IF error_detected = '1' THEN
-					--error_detected <= '1';
-					--first_error <= '0'; -- TEMPORAL
-					--pc_out <= pc_fields(head);
 					reset_rob(valid_fields, head, tail);
 					-- Abort the instruction we were about to commit
 					reg_v_out <= '0';
@@ -242,8 +239,6 @@ BEGIN
 					valid_out <= '0';
 				-- If there is no error, proceed as usual
 				ELSE
-					--error_detected <= '0';
-
 					-- Commit instructions on rising edge
 					IF valid_fields(head) = '1' THEN
 						reg_v_out <= reg_v_fields(head);

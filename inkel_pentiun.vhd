@@ -152,7 +152,6 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			sb_error_detected : IN  STD_LOGIC;
             mem_error_detected : IN STD_LOGIC;
             cache_block     : OUT STD_LOGIC
-            --sb_commit_verified    : IN STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -380,8 +379,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 			reset : IN STD_LOGIC;
 			load : IN STD_LOGIC;
 			done_C : IN STD_LOGIC;
-			DA : IN  STD_LOGIC_VECTOR (31 downto 0); --entrada 1
-			DB : IN  STD_LOGIC_VECTOR (31 downto 0); --entrada 2
+			DA : IN  STD_LOGIC_VECTOR (31 downto 0);
+			DB : IN  STD_LOGIC_VECTOR (31 downto 0);
 			reg_dest_in : IN STD_LOGIC_VECTOR(4 downto 0);
 			reg_we_in : IN STD_LOGIC;
 			M2_mul : OUT STD_LOGIC;
@@ -603,7 +602,6 @@ ARCHITECTURE structure OF inkel_pentiun IS
             ROB_error_out : OUT STD_LOGIC;
             MEM_error_out : OUT STD_LOGIC;
             is_store : OUT STD_LOGIC
-            --commit_verified : OUT STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -948,7 +946,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
     -- Signals with the name "***_ghost" are signals for the outputs generated in the duplicated pipeline that would normally go to a unit that has not been duplicated. 
     -- These signals are compared with the signals from the main pipeline, then they are discarded"
 
-    -- The rest of the input signals in the duplicated pipeline that have not been renamed as "***_dup" come from a signal generated outside the duplicate pipeline, which sends data to both pipelines"
+    -- The rest of the input signals in the duplicated pipeline that have not been renamed as "***_dup" come from a signal generated outside the duplicate pipeline, which sends data to both pipelines
 
 	-- Decode stage signals
 	SIGNAL conflict_D_dup : STD_LOGIC;
@@ -961,8 +959,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL branch_if_eq_A_dup : STD_LOGIC;
 	SIGNAL branch_taken_A_dup : STD_LOGIC;
 	SIGNAL mem_read_A_dup : STD_LOGIC;
-	SIGNAL reg_src1_v_A_dup : STD_LOGIC; -- unused signal? --
-	SIGNAL reg_src2_v_A_dup : STD_LOGIC; -- unused signal? --
+	SIGNAL reg_src1_v_A_dup : STD_LOGIC;
+	SIGNAL reg_src2_v_A_dup : STD_LOGIC;
 	SIGNAL inm_src2_v_A_dup : STD_LOGIC;
 	SIGNAL mem_we_A_dup : STD_LOGIC;
 	SIGNAL byte_A_dup : STD_LOGIC;
@@ -973,8 +971,8 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL ALU_ctrl_A_dup : STD_LOGIC_VECTOR(2 DOWNTO 0);
 	SIGNAL rob_idx_A_dup : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL reg_dest_A_dup : STD_LOGIC_VECTOR(4 DOWNTO 0);
-	SIGNAL reg_src1_A_dup : STD_LOGIC_VECTOR(4 DOWNTO 0); -- unused signal? --
-	SIGNAL reg_src2_A_dup : STD_LOGIC_VECTOR(4 DOWNTO 0); -- unused signal? --
+	SIGNAL reg_src1_A_dup : STD_LOGIC_VECTOR(4 DOWNTO 0);
+	SIGNAL reg_src2_A_dup : STD_LOGIC_VECTOR(4 DOWNTO 0);
 	SIGNAL pc_A_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL jump_addr_A_ghost : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL reg_data1_A_dup : STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -991,12 +989,12 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL cache_re_C_dup : STD_LOGIC;
 	SIGNAL byte_C_dup : STD_LOGIC;
 	SIGNAL reg_we_C_dup : STD_LOGIC;
-	SIGNAL priv_status_C_dup : STD_LOGIC; --exists but avoid sending it to fetch
+	SIGNAL priv_status_C_dup : STD_LOGIC;
 	SIGNAL invalid_access_C_dup : STD_LOGIC;
 	SIGNAL done_C_dup : STD_LOGIC;
 	SIGNAL mem_req_C_ghost : STD_LOGIC;
 	SIGNAL mem_we_C_ghost : STD_LOGIC;
-	SIGNAL mem_addr_C_ghost : STD_LOGIC_VECTOR(31 DOWNTO 0); --keep for exception unit, ghost output to memory
+	SIGNAL mem_addr_C_ghost : STD_LOGIC_VECTOR(31 DOWNTO 0);
 	SIGNAL mem_data_out_C_ghost : STD_LOGIC_VECTOR(127 DOWNTO 0);
 	SIGNAL inst_type_C_dup : STD_LOGIC_VECTOR(1 DOWNTO 0);
 	SIGNAL rob_idx_C_dup : STD_LOGIC_VECTOR(3 DOWNTO 0);
@@ -1015,7 +1013,7 @@ ARCHITECTURE structure OF inkel_pentiun IS
 	SIGNAL cache_re_C_clean : STD_LOGIC;
 	SIGNAL byte_C_clean : STD_LOGIC;
 	SIGNAL reg_we_C_clean : STD_LOGIC;
-	SIGNAL priv_status_C_clean : STD_LOGIC; --exists but avoid sending it to fetch
+	SIGNAL priv_status_C_clean : STD_LOGIC;
 	SIGNAL inst_type_C_clean : STD_LOGIC_VECTOR(1 DOWNTO 0);
 	SIGNAL rob_idx_C_clean : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL reg_dest_C_clean : STD_LOGIC_VECTOR(4 DOWNTO 0);
@@ -1188,14 +1186,14 @@ ARCHITECTURE structure OF inkel_pentiun IS
     SIGNAL ROB_error : STD_LOGIC;
     SIGNAL MEM_error : STD_LOGIC;
     SIGNAL is_store : STD_LOGIC;
-    --SIGNAL commit_verified : STD_LOGIC;
 
     -- END 2nd pipeline signals
 
     -- Signals from error generator --
     -- In every stage, we might introduce errors on the input data for that stage. The input data comes from the register that feeds the stage. --
     -- For instance, for the ALU step, the errors will be introduced to the data as it comes out from register reg_DA. --
-    -- If the stage produces wrong outputs due to an induced error, these shall be stored on the next register (if the error is not detected immediately)
+    -- If the stage produces wrong outputs due to an induced error, these will be stored on the next register (if the error is not detected immediately), and so on
+    -- until detected at commit stage
     -- ALU --
     	SIGNAL branch_A_err : STD_LOGIC;
     	SIGNAL jump_A_err : STD_LOGIC;
@@ -1859,7 +1857,6 @@ BEGIN
 		sb_error_detected => error_detected,
         mem_error_detected => MEM_error,
         cache_block => cache_block
-        --sb_commit_verified => commit_verified
 	);
 
 	reg_W_MEM_reset <= reset OR to_std_logic(inst_type_C /= INST_TYPE_MEM) OR NOT done_C OR error_detected;
@@ -1981,11 +1978,7 @@ BEGIN
 	debug_dump_ROB <= '0';
 	pc_out <= pc_ROB;
 
-	--reg_we_ROB_validated <= reg_we_ROB AND NOT error_detected;
-    --reg_we_ROB_validated <= reg_we_ROB AND (new_recovery_pc OR NOT error_detected);
     reg_we_ROB_validated <= reg_we_ROB AND NOT ROB_error;
-	--exc_ROB_validated <= exc_ROB AND NOT error_detected;
-    --exc_ROB_validated <= exc_ROB AND (new_recovery_pc OR NOT error_detected);
     exc_ROB_validated <= exc_ROB AND NOT ROB_error;
 
 
@@ -2285,7 +2278,7 @@ BEGIN
 	reg_dest_W_ALU_dup(3 DOWNTO 0) <= reg_dest_W_ALU_clean(3 DOWNTO 0);
 	reg_data_W_ALU_dup(31) <= reg_data_W_ALU_clean(31) xor reg_data_W_ALU_err;
 	reg_data_W_ALU_dup(30 DOWNTO 0) <= reg_data_W_ALU_clean(30 DOWNTO 0);
-	branch_taken_W_ALU_dup <= branch_taken_W_ALU_clean; ----> not muddled (for now)
+	branch_taken_W_ALU_dup <= branch_taken_W_ALU_clean;
 	pc_W_ALU_dup(31) <= pc_W_ALU_clean(31) xor pc_W_ALU_err;
 	pc_W_ALU_dup(30 DOWNTO 0) <= pc_W_ALU_clean(30 DOWNTO 0);
 	rob_idx_W_ALU_dup(3) <= rob_idx_W_ALU_clean(3) xor rob_idx_W_ALU_err;
@@ -2437,7 +2430,6 @@ BEGIN
 		sb_error_detected => error_detected,
         mem_error_detected => MEM_error,
         cache_block => cache_block_dup
-        --sb_commit_verified => commit_verified
 	);
 
 	reg_W_MEM_reset_dup <= reset OR to_std_logic(inst_type_C_dup /= INST_TYPE_MEM) OR NOT done_C_dup OR error_detected;
@@ -2568,8 +2560,8 @@ BEGIN
 		sb_squash => sb_squash_C_dup,
 		-- Error control
 		error_detected => error_detected,
-		new_recovery_pc => new_recovery_pc_ghost, -- should be compared
-		branch_was_taken => branch_was_taken_ghost -- should be compared
+		new_recovery_pc => new_recovery_pc_ghost,
+		branch_was_taken => branch_was_taken_ghost
 	);
 
     -- END 2nd pipeline --
@@ -2654,7 +2646,6 @@ BEGIN
         ROB_error_out => ROB_error,
         MEM_error_out => MEM_error,
         is_store => is_store
-        --commit_verified => commit_verified
 	);
 
 	error_gen : error_generator PORT MAP(

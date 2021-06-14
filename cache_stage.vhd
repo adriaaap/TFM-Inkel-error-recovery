@@ -29,7 +29,6 @@ ENTITY cache_stage IS
 		sb_error_detected : IN  STD_LOGIC;
         mem_error_detected : IN STD_LOGIC;
         cache_block     : OUT STD_LOGIC
-        --sb_commit_verified    : IN STD_LOGIC
 	);
 END cache_stage;
 
@@ -90,7 +89,6 @@ ARCHITECTURE cache_stage_behavior OF cache_stage IS
 			store_commit   : IN  STD_LOGIC;
 			squash         : IN  STD_LOGIC;
 			error_detected : IN  STD_LOGIC
-            --commit_verified      : IN STD_LOGIC
 		);
 	END COMPONENT;
 
@@ -166,7 +164,6 @@ BEGIN
 		store_commit => sb_store_commit,
 		squash => sb_squash,
 		error_detected => sb_error_detected
-        --commit_verified => sb_commit_verified
 	);
 
 	done <= cache_done AND sb_done;

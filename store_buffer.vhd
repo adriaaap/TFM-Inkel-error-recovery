@@ -28,7 +28,6 @@ ENTITY store_buffer IS
 		store_commit   : IN  STD_LOGIC;
 		squash         : IN  STD_LOGIC;
 		error_detected : IN  STD_LOGIC
-        --commit_verified      : IN STD_LOGIC
 	);
 END store_buffer;
 
@@ -144,7 +143,6 @@ BEGIN
 			size := size_i;
 
             -- Commit instruction when ROB sends store_commit, unless the instruction had an error when exiting the ROB
-			--IF store_commit = '1' AND commit_verified = '1' THEN
             IF store_commit = '1' THEN
 				valid_fields(head) <= '0';
 				head := (head + 1) MOD SB_ENTRIES;

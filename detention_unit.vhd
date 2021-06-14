@@ -52,12 +52,12 @@ ARCHITECTURE detention_unit_behavior OF detention_unit IS
 
 	-- Determine that there are no conflicts
 	SIGNAL conflict_ALU : STD_LOGIC;
-	SIGNAL conflict_MUL : STD_LOGIC; -- Detener instrucciones porque la inst MUL está en M1 o en M2
-	SIGNAL conflict_MUL_ALU : STD_LOGIC; -- Detener instrucciones alu-dependientes de una inst. mul
-	SIGNAL conflict_MUL_M1 : STD_LOGIC; -- Detener instrucciones porque es dependiente de la inst MUL
-	SIGNAL conflict_MUL_M2 : STD_LOGIC; -- Detener instrucciones porque es dependiente de la inst MUL
-	SIGNAL conflict_MUL_M3 : STD_LOGIC; -- Detener instrucciones porque es dependiente de la inst MUL
-	SIGNAL conflict_MUL_M4 : STD_LOGIC; -- Detener instrucciones porque es dependiente de la inst MUL
+	SIGNAL conflict_MUL : STD_LOGIC;
+	SIGNAL conflict_MUL_ALU : STD_LOGIC;
+	SIGNAL conflict_MUL_M1 : STD_LOGIC;
+	SIGNAL conflict_MUL_M2 : STD_LOGIC;
+	SIGNAL conflict_MUL_M3 : STD_LOGIC;
+	SIGNAL conflict_MUL_M4 : STD_LOGIC;
 	SIGNAL conflict_i : STD_LOGIC;
 	SIGNAL conflict_MEM_dep : STD_LOGIC;
 	SIGNAL conflict_MEM : STD_LOGIC;
